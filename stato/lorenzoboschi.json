@@ -3,11 +3,67 @@
   "sito": "lorenzoboschi",
   "fasi": {
     "prepara": {
-      "esito": "IN_CORSO",
+      "esito": "PASS",
       "inizio": "2026-11-03T22:18:38.363Z",
-      "fine": null,
+      "fine": "2026-11-03T22:22:18.440Z",
       "run": "41729635363",
-      "passi": [],
+      "passi": [
+        {
+          "nome": "repo del sito",
+          "esito": "lorentsob/portfolio-lorenzo-boschi@main 071ef3e",
+          "quando": "2026-11-03T22:18:42.132Z"
+        },
+        {
+          "nome": "progetto Vercel",
+          "esito": "portfolio-lorenzo-boschi (nextjs)",
+          "quando": "2026-11-03T22:18:42.309Z"
+        },
+        {
+          "nome": "variabili Vercel in Preview",
+          "esito": "stesse di Production",
+          "quando": "2026-11-03T22:18:42.443Z"
+        },
+        {
+          "nome": "record DNS di collaudo",
+          "esito": "già presente",
+          "quando": "2026-11-03T22:18:42.937Z"
+        },
+        {
+          "nome": "bypass Vercel",
+          "esito": "riusato quello esistente",
+          "quando": "2026-11-03T22:18:43.050Z"
+        },
+        {
+          "nome": "secret del sito",
+          "esito": "8 impostati (7 esistevano già)",
+          "quando": "2026-11-03T22:18:48.771Z"
+        },
+        {
+          "nome": "variabili del sito",
+          "esito": "DOMINIO_COLLAUDO, VERCEL_ALIAS_TEST, CLOUDFLARE_ACCOUNT_ID",
+          "quando": "2026-11-03T22:18:51.370Z"
+        },
+        {
+          "nome": "risorsa Coolify",
+          "esito": "creata enyu6cuyegf9xci4dofufxdj su collaudo-lorenzoboschi.lorentso.it, deploy del segnaposto finito",
+          "quando": "2026-11-03T22:19:01.583Z"
+        },
+        {
+          "nome": "registrazione VPS",
+          "esito": "PASS (2026-11-03T22:21:42+00:00)",
+          "quando": "2026-11-03T22:22:08.864Z"
+        },
+        {
+          "nome": "ramo del codice",
+          "esito": "collaudo/rilascio-unico af8213c",
+          "quando": "2026-11-03T22:22:16.520Z"
+        },
+        {
+          "nome": "PR",
+          "esito": "aperta https://github.com/lorentsob/portfolio-lorenzo-boschi/pull/6",
+          "quando": "2026-11-03T22:22:18.440Z"
+        }
+      ],
       "errore": null,
       "attesa": null
     }
@@ -15,7 +71,10 @@
   "valori": {
     "variabiliPreviewMancanti": [],
     "dominioCollaudo": "collaudo-lorenzoboschi.lorentso.it",
-    "aliasCollaudo": "lorenzoboschi-collaudo-lorentsob.vercel.app"
+    "aliasCollaudo": "lorenzoboschi-collaudo-lorentsob.vercel.app",
+    "coolifyAppUuid": "enyu6cuyegf9xci4dofufxdj",
+    "ramoCodice": "collaudo/rilascio-unico",
+    "pr": "https://github.com/lorentsob/portfolio-lorenzo-boschi/pull/6"
   },
-  "aggiornato": "2026-11-03T22:18:38.363Z"
+  "aggiornato": "2026-11-03T22:22:18.440Z"
 }
