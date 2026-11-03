@@ -1,0 +1,16 @@
+[Unit]
+Description=Agente VPS della regia migrazioni (policy, backup, verifiche)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/oracle-migrazioni/env
+ExecStart=/usr/bin/python3 -B /usr/local/bin/oracle-migrazioni.py
+TimeoutStartSec=600
+# Tocca solo i due file di configurazione e la propria cartella di stato.
+ProtectSystem=strict
+ReadWritePaths=/etc/oracle-security /etc/oracle-backup /var/lib/oracle-migrazioni
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true

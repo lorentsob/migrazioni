@@ -1,0 +1,17 @@
+{
+  "schema": "sito/v1",
+  "sito": "esempio",
+  "fase": "nessuna",
+  "repo": "lorentsob/esempio",
+  "ramo": "main",
+  "dominio": "esempio.it",
+  "www": true,
+  "backupDominio": "backup.esempio.it",
+  "vercel": { "progetto": "prj_xxxxxxxxxxxxxxxxxxxxxxxx", "team": "team_LNtaX8WcQ4wwNKI3DlD8eIwc" },
+  "statico": false,
+  "coolify": { "progetto": "esempio", "nome": "esempio-img", "riferimento": "7exc4pvrcdgquaxww8bmixdg" },
+  "rilascio": { "pagine": "/it /en", "immagineDiProva": "/favicon.ico", "contestoExtra": "", "node": "24.22.1" },
+  "worker": { "nome": "esempio-failover" },
+  "ok": {},
+  "note": "File di esempio: i file che iniziano con _ non fanno partire nulla. Campi obbligatori: schema, sito, fase, repo, dominio, www, vercel.progetto, statico. Gli altri hanno un default (vedi regia/lib/scheda.mjs). fase: nessuna | prepara | collaudo | cutover | failover | chiudi."
+}

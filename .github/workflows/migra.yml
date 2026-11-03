@@ -1,0 +1,83 @@
+# Regia delle migrazioni (progetto MIGRAZIONE-AUTOMATICA.md, 3/11/2026).
+# Parte a ogni push su main che tocca siti/<sito>.json ed esegue la fase scritta nel file
+# (regia/migra.mjs). L'esito finisce in stato/<sito>.json (commit della regia) e su Telegram.
+# I commit della regia toccano solo stato/ e vps/, quindi non fanno ripartire questo workflow.
+# Una migrazione alla volta: quella in corso non viene mai interrotta.
+name: migra
+
+on:
+  push:
+    branches: [main]
+    paths: ['siti/**']
+
+concurrency:
+  group: migrazioni
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # stato/<sito>.json e vps/registro.json
+
+jobs:
+  migra:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Scheda cambiata (una sola per push)
+        id: scheda
+        env:
+          PRIMA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ "$PRIMA" = 0000000000000000000000000000000000000000 ] || ! git cat-file -e "$PRIMA" 2>/dev/null; then
+            file="$(git show --pretty= --name-only HEAD -- 'siti/*.json')"
+          else
+            file="$(git diff --name-only "$PRIMA" HEAD -- 'siti/*.json')"
+          fi
+          file="$(grep -v '/_' <<<"$file" || true)"
+          n="$(grep -c . <<<"$file" || true)"
+          test "$n" = 1 || { echo "FAIL servono esattamente una scheda siti/<sito>.json per push (trovate: $n)"; echo "$file"; exit 1; }
+          test -f "$file" || { echo "FAIL $file cancellata: nessuna azione"; exit 1; }
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+          echo "Scheda: $file (fase $(jq -r .fase "$file"))"
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.22.1
+
+      - name: Fase
+        env:
+          MIGRAZIONI_GH_TOKEN: ${{ secrets.MIGRAZIONI_GH_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          CLOUDFLARE_WORKERS_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SCHEDA: ${{ steps.scheda.outputs.file }}
+        run: node regia/migra.mjs "$SCHEDA"
+
+      - name: Stato non salvato (solo se la fase si è interrotta prima del commit)
+        if: always()
+        run: |
+          set -euo pipefail
+          git add stato vps
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name=regia-migrazioni -c user.email=regia@lorentso.it commit -q -m "stato: salvataggio di emergenza (run $GITHUB_RUN_ID)"
+          git pull -q --rebase origin main && git push -q origin HEAD:main
+
+      - name: Avviso di errore della regia (fuori dalla fase)
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SCHEDA: ${{ steps.scheda.outputs.file }}
+        run: |
+          [ -n "$TELEGRAM_BOT_TOKEN" ] || exit 0
+          curl -fsS -o /dev/null -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode chat_id="$TELEGRAM_CHAT_ID" \
+            --data-urlencode text="STOP regia migrazioni (${SCHEDA:-scheda?}): run fallito $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true

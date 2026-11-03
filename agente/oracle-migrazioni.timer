@@ -1,0 +1,11 @@
+[Unit]
+Description=Agente VPS della regia migrazioni, ogni 5 minuti
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30
+Unit=oracle-migrazioni.service
+
+[Install]
+WantedBy=timers.target

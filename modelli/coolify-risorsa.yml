@@ -1,0 +1,143 @@
+# Risorsa Coolify a immagine per il rilascio unico (procedura v5, C3 e B4 sessione 2) — MODELLO.
+# Si copia nel repository del sito come .github/workflows/coolify-risorsa.yml. Solo manuale, con
+# l'ok di Lorenzo scritto nel thread. Stampa solo uuid, mai segreti. Nessun passo viene ritentato.
+#
+#  azione=crea          crea (o riusa, se vuoto) il progetto e una risorsa "Docker image" con il
+#                       segnaposto traefik/whoami sul dominio indicato, per far emettere il certificato.
+#                       Derivato da b4-setup-coolify.yml (collaudo B4 S1, 1/11: provato).
+#  azione=sposta-domini toglie i domini dalla risorsa vecchia (da git) e li mette sulla nuova, poi
+#                       ridistribuisce la nuova. Serve una sola volta, ai siti già sul percorso base.
+#                       Eseguito la prima volta il 3/11 (B4 S2-C); da allora attende il deploy e la health.
+#
+# Dopo "crea": registrare la nuova app in /etc/oracle-security/runtime-policy.json (reviewed_apps)
+# e controllare la copertura del backup (procedura v5, C3 punti 4-5), poi impostare la variabile
+# del repository COOLIFY_APP_UUID con l'uuid stampato.
+# Nomi di prova: mai stage-* o pr-*-* (li cattura il router phase2b-future-hosts del proxy).
+name: coolify-risorsa
+
+on:
+  workflow_dispatch:
+    inputs:
+      azione:
+        type: choice
+        options: [crea, sposta-domini]
+        required: true
+      progetto:
+        description: "crea: nome del progetto Coolify (es. lacisterna)"
+        type: string
+        default: ""
+      nome:
+        description: "crea: nome della risorsa (es. lacisterna-img)"
+        type: string
+        default: ""
+      dominio:
+        description: "crea: https://collaudo-<sito>.lorentso.it  |  sposta-domini: domini separati da virgola (es. https://lacisterna.eu,https://www.lacisterna.eu)"
+        type: string
+        required: true
+      riferimento:
+        description: "crea: uuid di una risorsa esistente da cui copiare server e rete  |  sposta-domini: uuid della risorsa VECCHIA"
+        type: string
+        required: true
+      nuova:
+        description: "sposta-domini: uuid della risorsa NUOVA (a immagine)"
+        type: string
+        default: ""
+      conferma:
+        description: "Scrivere: procedi"
+        type: string
+        required: true
+
+concurrency:
+  group: rilascio-unico
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  risorsa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      B: https://coolify.lorentso.it/api/v1
+    steps:
+      - name: Esegui
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          AZIONE: ${{ inputs.azione }}
+          PROGETTO: ${{ inputs.progetto }}
+          NOME: ${{ inputs.nome }}
+          DOMINIO: ${{ inputs.dominio }}
+          RIF: ${{ inputs.riferimento }}
+          NUOVA: ${{ inputs.nuova }}
+          CONFERMA: ${{ inputs.conferma }}
+        run: |
+          set -euo pipefail
+          test "$CONFERMA" = procedi || { echo "FAIL scrivere 'procedi' nel campo conferma"; exit 1; }
+          D="$RUNNER_TEMP/c"; mkdir -p "$D"
+          # chiama <nome> <args curl...>: corpo in $D/<nome>, stop se HTTP non 2xx o non JSON.
+          chiama() { local n="$1"; shift; local code
+            code="$(curl -sS -o "$D/$n" -w '%{http_code}' -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
+              -H "Authorization: Bearer $COOLIFY_TOKEN" -H 'Accept: application/json' -H 'Content-Type: application/json' "$@")"
+            if [[ "$code" != 2* ]] || ! jq -e . "$D/$n" > /dev/null 2>&1; then
+              echo "FAIL $n -> HTTP $code, inizio corpo: $(head -c 120 "$D/$n" | tr -d '\n' | sed -E 's/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/<ip>/g')"; exit 1; fi; }
+          [[ "$RIF" =~ ^[a-z0-9]{20,40}$ ]] || { echo "FAIL uuid di riferimento non valido"; exit 1; }
+          if [ "$AZIONE" = crea ]; then
+            [[ "$NOME" =~ ^[a-z0-9-]+$ && "$PROGETTO" =~ ^[a-z0-9-]+$ ]] || { echo "FAIL nome o progetto non validi"; exit 1; }
+            [[ "$DOMINIO" =~ ^https://[a-z0-9.-]+$ ]] || { echo "FAIL dominio non valido"; exit 1; }
+            if [[ "$DOMINIO" =~ ^https://(stage-|pr-[0-9]+-) ]]; then echo "FAIL nome riservato dal proxy (phase2b-future-hosts): usare collaudo-<sito>.lorentso.it"; exit 1; fi
+            chiama app "$B/applications"
+            if jq -e --arg n "$NOME" 'any(.[]; .name==$n)' "$D/app" > /dev/null; then echo "FAIL esiste già una risorsa '$NOME': nessuna azione"; exit 1; fi
+            chiama progetti "$B/projects"
+            progetto="$(jq -r --arg p "$PROGETTO" '[.[] | select(.name==$p)][0].uuid // empty' "$D/progetti")"
+            chiama server "$B/servers"
+            server="$(jq -er 'if length==1 then .[0].uuid else error("server non unico: \(length)") end' "$D/server")"
+            chiama rif "$B/applications/$RIF"
+            dest="$(jq -er '.destination.uuid' "$D/rif")"
+            if [ -z "$progetto" ]; then
+              chiama progetto -X POST "$B/projects" -d "$(jq -n --arg n "$PROGETTO" '{name:$n, description:"rilascio unico"}')"
+              progetto="$(jq -er .uuid "$D/progetto")"
+            fi
+            chiama risorsa -X POST "$B/applications/dockerimage" -d "$(jq -n --arg p "$progetto" --arg s "$server" --arg d "$dest" --arg n "$NOME" --arg dom "$DOMINIO" \
+              '{project_uuid:$p, server_uuid:$s, destination_uuid:$d, environment_name:"production", name:$n,
+                docker_registry_image_name:"traefik/whoami", docker_registry_image_tag:"v1.10.3", ports_exposes:"3000", domains:$dom, instant_deploy:false}')"
+            app="$(jq -er .uuid "$D/risorsa")"
+            chiama env -X POST "$B/applications/$app/envs" -d '{"key":"WHOAMI_PORT_NUMBER","value":"3000"}'
+            chiama deploy -X POST "$B/deploy?uuid=$app&force=false"
+            echo "PROGETTO=$progetto"
+            echo "COOLIFY_APP_UUID=$app"
+            echo "Prossimo: policy di sicurezza, copertura backup, gh variable set COOLIFY_APP_UUID"
+          else
+            [[ "$NUOVA" =~ ^[a-z0-9]{20,40}$ && "$NUOVA" != "$RIF" ]] || { echo "FAIL uuid della risorsa nuova non valido"; exit 1; }
+            [[ "$DOMINIO" =~ ^https://[a-z0-9.-]+(,https://[a-z0-9.-]+)*$ ]] || { echo "FAIL elenco domini non valido"; exit 1; }
+            chiama vecchia "$B/applications/$RIF"; chiama nuova "$B/applications/$NUOVA"
+            test "$(jq -r .build_pack "$D/nuova")" = dockerimage || { echo "FAIL la risorsa nuova non è di tipo Docker image"; exit 1; }
+            prima="$(jq -r .fqdn "$D/vecchia")"; echo "Domini vecchia prima: $prima"
+            # 1) libera i domini sulla vecchia. Il container vecchio resta acceso e intatto (rollback);
+            #    lo si ferma dopo, con l'ok di Lorenzo, quando la nuova ha superato la verifica.
+            chiama libera -X PATCH "$B/applications/$RIF" -d '{"domains":""}'
+            chiama deploy-vecchia -X POST "$B/deploy?uuid=$RIF&force=false"
+            # Da qui, se un passo fallisce, si rimettono i domini sulla vecchia (una volta, non è un ritentativo).
+            ripristina() { IN_CORSO=0; echo "ROLLBACK: domini di nuovo sulla vecchia"; chiama rb -X PATCH "$B/applications/$RIF" -d "$(jq -n --arg d "$prima" '{domains:$d}')" \
+              && chiama rb-deploy -X POST "$B/deploy?uuid=$RIF&force=false"; }
+            IN_CORSO=1; trap '[ "${IN_CORSO:-0}" = 1 ] && ripristina' EXIT
+            # 2) domini sulla nuova e nuovo deploy (Traefik prende le route, certificato HTTP-01)
+            chiama assegna -X PATCH "$B/applications/$NUOVA" -d "$(jq -n --arg d "$DOMINIO" '{domains:$d}')"
+            chiama deploy -X POST "$B/deploy?uuid=$NUOVA&force=false"
+            # 3) attesa del deploy della nuova (solo letture, max 4 min) e risposta del primo dominio.
+            #    Se uno dei due non arriva, il trap rimette i domini sulla vecchia.
+            dep="$(jq -r '.deployments[0].deployment_uuid // empty' "$D/deploy")"; test -n "$dep" || { echo "FAIL Coolify non ha restituito il deployment"; exit 1; }
+            stato=""; for _ in $(seq 1 40); do chiama stato "$B/deployments/$dep"; stato="$(jq -r .status "$D/stato")"
+              case "$stato" in finished) break;; failed|cancelled*) echo "FAIL deploy della nuova: $stato"; exit 1;; esac; sleep "${ATTESA:-6}"; done
+            test "$stato" = finished || { echo "FAIL deploy della nuova oltre 4 minuti (ultimo stato: $stato)"; exit 1; }
+            primo="${DOMINIO%%,*}"; ok=""; for _ in $(seq 1 20); do
+              c="$(curl -sS -o "$D/health" -w '%{http_code}' -m 10 "$primo/api/health" || true)"; [ "$c" = 200 ] && jq -e '.status == "ok"' "$D/health" > /dev/null 2>&1 && { ok=1; break; }; sleep "${ATTESA:-6}"; done
+            test -n "$ok" || { echo "FAIL $primo/api/health non risponde ok dopo il deploy"; exit 1; }
+            echo "Deploy nuova: finished; $primo/api/health: $(cat "$D/health")"
+            IN_CORSO=0
+            chiama rilettura "$B/applications/$NUOVA"
+            echo "Domini nuova dopo: $(jq -r .fqdn "$D/rilettura")"
+            echo "Rollback manuale: domains sulla vecchia = '$prima' + deploy; domains \"\" sulla nuova + deploy."
+          fi

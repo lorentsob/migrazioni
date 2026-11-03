@@ -1,0 +1,8 @@
+{
+  "name": "migrazioni",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test 'test/*.test.mjs' && python3 -W ignore -m unittest discover -s test -p '*_test.py'"
+  }
+}

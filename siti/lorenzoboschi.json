@@ -1,0 +1,13 @@
+{
+  "schema": "sito/v1",
+  "sito": "lorenzoboschi",
+  "fase": "nessuna",
+  "repo": "lorentsob/portfolio-lorenzo-boschi",
+  "ramo": "main",
+  "dominio": "lorenzoboschi.it",
+  "www": true,
+  "vercel": { "progetto": "prj_HOCAc0Qhy4I4McsisQsI4tcOmQ1e" },
+  "statico": false,
+  "rilascio": { "pagine": "/it /en", "immagineDiProva": "/favicon.ico", "contestoExtra": "", "node": "22.18.0" },
+  "note": "Scheda da coolify/inventory/lorenzoboschi.md (22/10). Prima di mettere fase=prepara: confermare il progetto Vercel e l'immagine di prova; C2 deve sistemare i due next.config, KV (KV_REST_API_URL/TOKEN in Preview), /api/revalidate senza secret, engines node <24 (lo standalone gira su node:24 nell'immagine)."
+}

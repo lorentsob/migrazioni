@@ -1,0 +1,322 @@
+# Rilascio unico (procedura v5, B.0) — MODELLO. Si copia nel repository del sito come
+# .github/workflows/rilascio-unico.yml insieme alla cartella .github/rilascio/ (vedi
+# coolify/templates/rilascio/README.md). Le righe "CONFIGURAZIONE DEL SITO" sono le sole da adattare.
+#
+# Sequenza: 1 build unica (vercel build) · 2 unione asset conservati · 3 immagine ARM64 su GHCR
+# (digest registrato, tag unico <commit>-r<run>-<tentativo>) · 4 pre-check (Vercel non promosso +
+# container per digest, hash identici) · 5 promozione VPS (Coolify, tag unico: 4.4.7 rifiuta il
+# digest) · 6 promozione Vercel (id verificato) · 7 verifica-sito.sh · 8 release.json sul ramo
+# "rilasci". Nessun passo viene ritentato: al primo errore stop e avviso; si riparte solo con
+# rilascio-sblocca.yml. Rollback = nuovo rilascio di un commit precedente (workflow_dispatch con
+# "commit"), mai `vercel rollback`.
+name: rilascio-unico
+
+on:
+  push:
+    branches: [main, 'collaudo/**']
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: "Rollback: commit completo (40 caratteri) già su main da ripubblicare. Vuoto = ultimo commit di main."
+        required: false
+        type: string
+
+# Un solo rilascio alla volta per sito; quello in corso non viene mai interrotto.
+concurrency:
+  group: rilascio-unico
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # solo per il ramo del registro "rilasci" (release.json)
+  packages: write   # push dell'immagine su GHCR
+
+env:
+  # ---- CONFIGURAZIONE DEL SITO ----
+  SITO: lacisterna.eu
+  DOMINIO: lacisterna.eu
+  BACKUP_DOMINIO: backup.lacisterna.eu
+  IMMAGINE: ghcr.io/lorentsob/cisterna
+  VERCEL_ORG_ID: team_LNtaX8WcQ4wwNKI3DlD8eIwc
+  VERCEL_PROJECT_ID: prj_gxLpM14qOhDKPChQKrUPYhSHy0w3
+  COOLIFY_URL: https://coolify.lorentso.it
+  COOLIFY_APP_UUID: ${{ vars.COOLIFY_APP_UUID }}
+  PAGINE: /it /en
+  IMMAGINE_DI_PROVA: /logo.png
+  CONTESTO_EXTRA: .npmrc shims
+  NODE_VERSION: 24.22.1
+  # ---- fine configurazione ----
+  VERCEL_CLI: vercel@63.1.2
+  WRANGLER: wrangler@4.151.1
+  RAMO_REGISTRO: rilasci
+  NEXT_TELEMETRY_DISABLED: "1"
+  VERCEL_TELEMETRY_DISABLED: "1"
+
+jobs:
+  rilascio:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.commit || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 0. Commit e modalità
+        env:
+          INPUT_COMMIT: ${{ inputs.commit }}
+          ALIAS_COLLAUDO: ${{ vars.VERCEL_ALIAS_TEST }}
+          DOMINIO_COLLAUDO: ${{ vars.DOMINIO_COLLAUDO }}
+          DOMINIO_OVERRIDE: ${{ vars.DOMINIO_OVERRIDE }}
+        run: |
+          set -euo pipefail
+          test -n "$COOLIFY_APP_UUID" || { echo "FAIL variabile COOLIFY_APP_UUID mancante"; exit 1; }
+          # Due modalità, decise dal ramo e mai da una variabile (così main non va mai in prova per errore):
+          #  - main: produzione Vercel (--prod --skip-domain, poi promote), registro "rilasci";
+          #  - collaudo/**: Vercel solo preview + alias di test, dominio di collaudo, registro "rilasci-collaudo".
+          # DOMINIO_OVERRIDE (solo su main) serve una volta, quando la risorsa a immagine è ancora sul nome di collaudo.
+          if [ "$GITHUB_REF" = refs/heads/main ]; then
+            dom="${DOMINIO_OVERRIDE:-$DOMINIO}"; { echo "DOM=$dom"; echo "BACKUP=$BACKUP_DOMINIO"; echo "ALIAS="; echo "RAMO=$RAMO_REGISTRO"; echo "VAMB=production"; echo "PROD=--prod"; echo "STAGING_V=$([ -n "$DOMINIO_OVERRIDE" ] && echo 1)"; } >> "$GITHUB_ENV"
+          else
+            [[ "$ALIAS_COLLAUDO" =~ ^[a-z0-9-]+\.vercel\.app$ ]] || { echo "FAIL collaudo: variabile VERCEL_ALIAS_TEST (alias *.vercel.app) mancante"; exit 1; }
+            [[ "$DOMINIO_COLLAUDO" =~ ^collaudo-[a-z0-9-]+\.lorentso\.it$ ]] || { echo "FAIL collaudo: variabile DOMINIO_COLLAUDO (collaudo-<sito>.lorentso.it) mancante"; exit 1; }
+            test -z "$INPUT_COMMIT" || { echo "FAIL il rollback si fa solo da main"; exit 1; }
+            { echo "DOM=$DOMINIO_COLLAUDO"; echo "BACKUP=$ALIAS_COLLAUDO"; echo "ALIAS=$ALIAS_COLLAUDO"; echo "RAMO=$RAMO_REGISTRO-collaudo"; echo "VAMB=preview"; echo "PROD="; echo "STAGING_V=1"; } >> "$GITHUB_ENV"
+          fi
+          COMMIT="$(git rev-parse HEAD)"
+          MODALITA=release
+          if [ -n "$INPUT_COMMIT" ]; then
+            [[ "$INPUT_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "FAIL commit non valido"; exit 1; }
+            test "$COMMIT" = "$INPUT_COMMIT"
+            git merge-base --is-ancestor "$COMMIT" origin/main || { echo "FAIL il commit non è su main"; exit 1; }
+            MODALITA=rollback
+          fi
+          { echo "COMMIT=$COMMIT"; echo "MODALITA=$MODALITA"; echo "LAVORO=$RUNNER_TEMP/rilascio"; echo "R=$RUNNER_TEMP/strumenti/.github/rilascio"; } >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/rilascio" "$RUNNER_TEMP/strumenti"
+          # Strumenti del rilascio sempre dalla versione del workflow (anche in rollback a un commit vecchio).
+          git archive "$GITHUB_SHA" .github/rilascio | tar -x -C "$RUNNER_TEMP/strumenti"
+          echo "Rilascio $MODALITA di $COMMIT"
+
+      - name: 0b. Registro precedente (sola lettura, stop se incompleto)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/$GITHUB_REPOSITORY/contents/release.json?ref=$RAMO" --jq .content > "$LAVORO/precedente.b64" 2>/dev/null; then
+            base64 -d "$LAVORO/precedente.b64" > "$LAVORO/precedente.json"
+            esito="$(jq -r .esito "$LAVORO/precedente.json")"
+            echo "Release precedente: $(jq -r .commit "$LAVORO/precedente.json") esito $esito"
+            test "$esito" = completo || { echo "FAIL stato parziale nel registro: serve Lorenzo, nessuna azione (sblocco: workflow rilascio-sblocca)"; exit 1; }
+          else
+            echo '{"storico":[]}' > "$LAVORO/precedente.json"
+            echo "Nessun registro: primo rilascio"
+          fi
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: 1. BUILD (una sola, con vercel build)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          SOURCE_COMMIT: ${{ env.COMMIT }}
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npx --yes "$VERCEL_CLI" pull --yes --environment="$VAMB" --token "$VERCEL_TOKEN"
+          chmod 600 ".vercel/.env.$VAMB.local"
+          # shellcheck disable=SC2086 # PROD è "--prod" oppure vuoto
+          npx --yes "$VERCEL_CLI" build $PROD --yes --token "$VERCEL_TOKEN"
+          test -f .next/standalone/server.js
+          test -f .vercel/output/config.json
+          if find .next/standalone -name '.env*' -print -quit | grep -q .; then echo "FAIL file .env nello standalone"; exit 1; fi
+          node "$R"/asset.mjs manifest .next/static "$COMMIT" "$LAVORO/propri.json"
+
+      - name: 2. ASSET (unione con le release conservate, dalle immagini per digest)
+        run: |
+          set -euo pipefail
+          echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          args=()
+          n="$(jq '.storico | length' "$LAVORO/precedente.json")"
+          for i in $(seq 0 $(( n < 2 ? n - 1 : 1 ))); do
+            img="$(jq -r ".storico[$i].immagine" "$LAVORO/precedente.json")"
+            [[ "$img" =~ ^[a-z0-9./_-]+@sha256:[a-f0-9]{64}$ ]] || { echo "FAIL immagine conservata senza digest"; exit 1; }
+            jq ".storico[$i].propri" "$LAVORO/precedente.json" > "$LAVORO/conservato-$i.json"
+            cid="$(docker create --platform linux/arm64 "$img")"
+            docker cp "$cid:/app/.next/static" "$LAVORO/conservato-$i"
+            docker rm "$cid" > /dev/null
+            args+=("$LAVORO/conservato-$i.json" "$LAVORO/conservato-$i")
+          done
+          if [ "${#args[@]}" -gt 0 ]; then
+            node "$R"/asset.mjs unisci .next/static "${args[@]}"
+            node "$R"/asset.mjs unisci .vercel/output/static/_next/static "${args[@]}"
+          fi
+          node "$R"/asset.mjs manifest .next/static "$COMMIT" "$LAVORO/unione.json"
+          node "$R"/asset.mjs manifest .vercel/output/static/_next/static "$COMMIT" "$LAVORO/unione-vercel.json" --vercel
+          node "$R"/asset.mjs confronta "$LAVORO/unione.json" "$LAVORO/unione-vercel.json"
+
+      - uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: 3. IMMAGINE (ARM64 dallo standalone, push su GHCR, digest)
+        run: |
+          set -euo pipefail
+          ctx="$LAVORO/contesto"; mkdir -p "$ctx/extra"
+          cp -R .next/standalone "$ctx/standalone"
+          cp -R .next/static "$ctx/static"
+          cp -R public "$ctx/public"
+          cp package.json package-lock.json healthcheck.cjs "$R/Dockerfile.prebuilt" "$ctx/"
+          for x in $CONTESTO_EXTRA; do cp -R "$x" "$ctx/extra/"; done
+          # Tag immutabile e unico per esecuzione: <commit>-r<run>-<tentativo>. Coolify 4.4.7 rifiuta
+          # il digest come tag (B4). Il suffisso serve al rollback, che ricostruisce un commit già
+          # pubblicato: il tag non viene mai riassegnato, e se esiste già ci si ferma.
+          tag="$COMMIT-r$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          if out="$(docker manifest inspect "$IMMAGINE:$tag" 2>&1)"; then echo "FAIL il tag $IMMAGINE:$tag esiste già: non si riassegna"; exit 1
+          elif ! grep -qiE 'no such manifest|manifest unknown|not found' <<<"$out"; then echo "FAIL controllo del tag non riuscito (non è un 'tag assente'): $(head -c 200 <<<"$out")"; exit 1; fi
+          docker buildx build --platform linux/arm64 --push --provenance=false \
+            --build-arg "SOURCE_COMMIT=$COMMIT" \
+            --tag "$IMMAGINE:$tag" --metadata-file "$LAVORO/immagine.json" \
+            -f "$ctx/Dockerfile.prebuilt" "$ctx"
+          digest="$(jq -er '."containerimage.digest" | select(test("^sha256:[a-f0-9]{64}$"))' "$LAVORO/immagine.json")"
+          { echo "IMMAGINE_DIGEST=$IMMAGINE@$digest"; echo "IMMAGINE_VPS=$IMMAGINE:$tag"; } >> "$GITHUB_ENV"
+          echo "Immagine $IMMAGINE@$digest"
+
+      - name: 4a. PRE-CHECK Vercel (deployment prebuilt NON promosso)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          set -euo pipefail
+          # main: --prod --skip-domain, deployment di produzione (stesse variabili del build) che NON
+          # prende i domini; la promozione avviene solo al passo 6, sull'id verificato qui.
+          # collaudo/**: preview; al passo 6 la "promozione" è l'alias di test (B4 S1).
+          if [ "$PROD" = --prod ]; then
+            url="$(npx --yes "$VERCEL_CLI" deploy --prebuilt --prod --skip-domain --yes --token "$VERCEL_TOKEN" --meta "sourceCommit=$COMMIT")"
+          else
+            url="$(npx --yes "$VERCEL_CLI" deploy --prebuilt --yes --token "$VERCEL_TOKEN" --meta "sourceCommit=$COMMIT")"
+          fi
+          [[ "$url" =~ ^https://[a-z0-9-]+\.vercel\.app$ ]] || { echo "FAIL URL del deployment inatteso"; exit 1; }
+          info="$(curl -fsS -H "Authorization: Bearer $VERCEL_TOKEN" "https://api.vercel.com/v13/deployments/${url#https://}?teamId=$VERCEL_ORG_ID")"
+          id="$(jq -er '.id | select(test("^dpl_[A-Za-z0-9]+$"))' <<<"$info")"
+          test "$(jq -r .readyState <<<"$info")" = READY
+          { echo "VERCEL_URL=$url"; echo "VERCEL_DEPLOYMENT=$id"; } >> "$GITHUB_ENV"
+          node "$R"/precheck.mjs --vercel="$url" --manifest="$LAVORO/unione.json" \
+            --commit="$COMMIT" --pagine="$PAGINE" --immagine="$IMMAGINE_DI_PROVA"
+
+      - name: 4b. PRE-CHECK container (immagine per digest)
+        run: |
+          set -euo pipefail
+          # Variabili di runtime dal file di Vercel (solo nomi passati a docker, mai stampati).
+          set -a; . ".vercel/.env.$VAMB.local"; set +a
+          envargs=(); while IFS= read -r n; do envargs+=(-e "$n"); done < <(sed -n 's/^\([A-Z][A-Z0-9_]*\)=.*/\1/p' ".vercel/.env.$VAMB.local" | grep -v -e '^VERCEL' -e '^SOURCE_COMMIT$')
+          cid="$(docker run -d --platform linux/arm64 -p 127.0.0.1:3000:3000 --memory=2g --pids-limit=256 "${envargs[@]}" "$IMMAGINE_DIGEST")"
+          echo "CONTAINER=$cid" >> "$GITHUB_ENV"
+          for _ in $(seq 1 60); do
+            s="$(docker inspect --format '{{.State.Health.Status}}' "$cid")"
+            [ "$s" = healthy ] && break; [ "$s" = unhealthy ] && break; sleep 3
+          done
+          test "$(docker inspect --format '{{.State.Health.Status}}' "$cid")" = healthy || { docker logs --tail 30 "$cid"; exit 1; }
+          node "$R"/precheck.mjs --base=http://127.0.0.1:3000 --manifest="$LAVORO/unione.json" \
+            --commit="$COMMIT" --pagine="$PAGINE" --immagine="$IMMAGINE_DI_PROVA"
+          # L'immagine contiene esattamente l'unione (né più né meno).
+          docker cp "$cid:/app/.next/static" "$LAVORO/static-immagine"
+          node "$R"/asset.mjs manifest "$LAVORO/static-immagine" "$COMMIT" "$LAVORO/unione-immagine.json"
+          node "$R"/asset.mjs confronta "$LAVORO/unione.json" "$LAVORO/unione-immagine.json"
+
+      - name: Pulizia variabili e container di prova
+        if: always()
+        run: |
+          rm -f .vercel/.env.*.local
+          if [ -n "${CONTAINER:-}" ]; then docker rm -f "$CONTAINER" > /dev/null || true; fi
+
+      - name: 5-8. PROMOZIONE (VPS, poi Vercel), VERIFICA, REGISTRO
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          VERIFICA_SITO: ${{ runner.temp }}/strumenti/.github/rilascio/verifica-sito.sh
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          # Valori della modalità (passo 0): letti da adattatori.mjs e da verifica-sito.sh.
+          DOMINIO: ${{ env.DOM }}
+          BACKUP_DOMINIO: ${{ env.BACKUP }}
+          VERCEL_ALIAS_TEST: ${{ env.ALIAS }}
+          RAMO_REGISTRO: ${{ env.RAMO }}
+          STAGING: ${{ env.STAGING_V }}
+          # Solo in collaudo: "[simula-passo6]" nel messaggio di commit fa fallire il passo 6 (prova degli avvisi).
+          SIMULA: ${{ github.ref != 'refs/heads/main' && contains(github.event.head_commit.message, '[simula-passo6]') && 'passo6' || 'nessuno' }}
+        run: |
+          set -euo pipefail
+          # Ramo del registro: creato una volta, senza codice e con i deploy Vercel spenti.
+          if ! gh api "repos/$GITHUB_REPOSITORY/branches/$RAMO_REGISTRO" > /dev/null 2>&1; then
+            tree="$(jq -n '{tree:[{path:"vercel.json",mode:"100644",type:"blob",content:"{\"git\":{\"deploymentEnabled\":false}}\n"}]}' \
+              | gh api "repos/$GITHUB_REPOSITORY/git/trees" --input - --jq .sha)"
+            c="$(gh api "repos/$GITHUB_REPOSITORY/git/commits" -f message="registro rilasci" -f tree="$tree" --jq .sha)"
+            gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/heads/$RAMO_REGISTRO" -f sha="$c" > /dev/null
+          fi
+          jq -n --arg sito "$SITO" --arg commit "$COMMIT" --arg immagine "$IMMAGINE_DIGEST" --arg vps "$IMMAGINE_VPS" --arg dpl "$VERCEL_DEPLOYMENT" \
+            --arg url "$VERCEL_URL" --arg modalita "$MODALITA" --arg run "$GITHUB_RUN_ID" \
+            --slurpfile unione "$LAVORO/unione.json" --slurpfile propri "$LAVORO/propri.json" \
+            --arg set "$(node "$R"/asset.mjs impronta "$LAVORO/unione.json")" \
+            '{sito:$sito, commit:$commit, immagine:$immagine, immagineVps:$vps, vercelDeployment:$dpl, vercelUrl:$url, modalita:$modalita, runId:$run,
+              asset:{count:($unione[0].files|length), setDigest:$set}, propri:$propri[0]}' > "$LAVORO/candidato.json"
+          node "$R"/promuovi.mjs --candidato="$LAVORO/candidato.json"
+          touch "$LAVORO/promosso.ok"
+
+      - name: Lista asset per il Worker (dalla release appena registrata)
+        run: |
+          set -euo pipefail
+          sha="$(sha256sum "$LAVORO/unione.json" | cut -d' ' -f1)"
+          n="$(jq '.files | length' "$LAVORO/unione.json")"
+          node "$R"/generate-failover-allowlist-config.mjs --manifest "$LAVORO/unione.json" --output "$LAVORO/allowlist.json" \
+            --expected-revision "$COMMIT" --expected-manifest-sha256 "$sha" --expected-asset-count "$n"
+
+      - name: Pubblicazione del Worker con la lista nuova (solo su main e con WORKER_FAILOVER = attivo)
+        if: github.ref == 'refs/heads/main' && vars.WORKER_FAILOVER == 'attivo'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "FAIL token o account Cloudflare mancanti"; exit 1; }
+          w="$LAVORO/worker"; cp -R "$R/worker" "$w"; cp "$LAVORO/allowlist.json" "$w/allowlist.json"
+          sha="$(jq -r .manifestSha256 "$w/allowlist.json")"
+          sed -i -e "s/SOSTITUIRE_CON_COMMIT_COMPLETO/$COMMIT/" -e "s/SOSTITUIRE_CON_HASH_MANIFEST/$sha/" "$w/worker-sito.mjs"
+          ! grep -q SOSTITUIRE_CON "$w/worker-sito.mjs"
+          # Una sola pubblicazione, mai ritentata. Le route restano quelle impostate su Cloudflare.
+          (cd "$w" && npx --yes "$WRANGLER" deploy --config wrangler.jsonc)
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: rilascio-${{ github.run_id }}
+          path: |
+            ${{ env.LAVORO }}/*.json
+            !${{ env.LAVORO }}/precedente.json
+          retention-days: 90
+          if-no-files-found: ignore
+
+      - name: Avviso di errore (prima della promozione o sul Worker)
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          # promuovi.mjs avvisa da solo per i passi 5-8; qui i passi 0-4 e la lista del Worker.
+          if [ -f "${LAVORO:-/nessuno}/promosso.ok" ]; then
+            testo="rilascio $SITO ${COMMIT:0:7} completo, ma la lista asset del Worker non è stata generata o pubblicata: il failover usa la lista precedente"
+          elif [ -f "${LAVORO:-/nessuno}/candidato.json" ]; then
+            exit 0
+          else
+            testo="STOP rilascio $SITO ${COMMIT:-?}: errore prima della promozione, nulla è stato promosso"
+          fi
+          curl -fsS -o /dev/null -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode chat_id="$TELEGRAM_CHAT_ID" \
+            --data-urlencode text="$testo $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

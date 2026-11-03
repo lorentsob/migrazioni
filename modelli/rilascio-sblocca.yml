@@ -1,0 +1,81 @@
+# Sblocco dopo uno STOP del rilascio unico (procedura v5, B.0 "Stati parziali") — MODELLO.
+# Si copia nel repository del sito come .github/workflows/rilascio-sblocca.yml. Lo lancia SOLO
+# Lorenzo (o un thread con il suo ok scritto), da Actions → rilascio-sblocca → Run workflow, oppure:
+#   gh workflow run rilascio-sblocca.yml --repo <owner>/<repo> -f azione=<azione> -f motivo="<perché>" -f conferma=sblocca
+# Rilegge VPS e Vercel e agisce solo se lo stato vero coincide con l'azione scelta (vedi
+# promuovi.mjs → sblocca). Al massimo una chiamata di modifica (completa-vercel), mai ritentata.
+# Il blocco "CONFIGURAZIONE DEL SITO" deve essere identico a quello di rilascio-unico.yml.
+# Vale solo per il registro di main ("rilasci"). Il registro di prova "rilasci-collaudo" non si
+# sblocca: si cancella il suo ramo (gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/rilasci-collaudo).
+name: rilascio-sblocca
+
+on:
+  workflow_dispatch:
+    inputs:
+      azione:
+        description: "ripristina (tutto ancora sul precedente) | accetta (tutto già sul nuovo) | completa-vercel (STOP al passo 6)"
+        required: true
+        type: choice
+        options: [ripristina, accetta, completa-vercel]
+      motivo:
+        description: "Perché si sblocca (finisce nel registro)"
+        required: true
+        type: string
+      conferma:
+        description: "Scrivere: sblocca"
+        required: true
+        type: string
+
+# Stesso gruppo del rilascio: non può girare insieme a un rilascio.
+concurrency:
+  group: rilascio-unico
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # solo release.json sul ramo del registro
+
+env:
+  # ---- CONFIGURAZIONE DEL SITO (identica a rilascio-unico.yml) ----
+  SITO: lacisterna.eu
+  DOMINIO: lacisterna.eu
+  BACKUP_DOMINIO: backup.lacisterna.eu
+  VERCEL_ORG_ID: team_LNtaX8WcQ4wwNKI3DlD8eIwc
+  VERCEL_PROJECT_ID: prj_gxLpM14qOhDKPChQKrUPYhSHy0w3
+  COOLIFY_URL: https://coolify.lorentso.it
+  COOLIFY_APP_UUID: ${{ vars.COOLIFY_APP_UUID }}
+  NODE_VERSION: 24.22.1
+  # ---- fine configurazione ----
+  RAMO_REGISTRO: rilasci
+
+jobs:
+  sblocca:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Conferma
+        env:
+          CONFERMA: ${{ inputs.conferma }}
+        run: test "$CONFERMA" = sblocca || { echo "FAIL scrivere 'sblocca' nel campo conferma"; exit 1; }
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Sblocco (rilettura dello stato, poi al massimo una modifica)
+        env:
+          AZIONE: ${{ inputs.azione }}
+          MOTIVO: ${{ inputs.motivo }}
+          GITHUB_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          VERIFICA_SITO: ${{ github.workspace }}/.github/rilascio/verifica-sito.sh
+          # Come nel rilascio su main: DOMINIO_OVERRIDE vale finché la risorsa è sul nome di collaudo.
+          DOMINIO: ${{ vars.DOMINIO_OVERRIDE || env.DOMINIO }}
+          STAGING: ${{ vars.DOMINIO_OVERRIDE && '1' || '' }}
+        run: node .github/rilascio/promuovi.mjs --sblocca="$AZIONE" --motivo="$MOTIVO"
