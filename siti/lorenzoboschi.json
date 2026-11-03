@@ -16,5 +16,5 @@
     "contestoExtra": "",
     "node": "22.18.0"
   },
-  "note": "Scheda da coolify/inventory/lorenzoboschi.md (22/10). Prima di mettere fase=prepara: confermare il progetto Vercel e l'immagine di prova; C2 deve sistemare i due next.config, KV (KV_REST_API_URL/TOKEN in Preview), /api/revalidate senza secret, engines node <24 (lo standalone gira su node:24 nell'immagine). Rilancio prepara 3/11 22:10 UTC con il token Vercel nuovo."
+  "note": "Scheda da coolify/inventory/lorenzoboschi.md (22/10). Prima di mettere fase=prepara: confermare il progetto Vercel e l'immagine di prova; C2 deve sistemare i due next.config, KV (KV_REST_API_URL/TOKEN in Preview), /api/revalidate senza secret, engines node <24 (lo standalone gira su node:24 nell'immagine). Rilancio prepara 3/11 22:18 UTC con token Vercel e Coolify nuovi."
 }
