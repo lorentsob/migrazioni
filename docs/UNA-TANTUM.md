@@ -28,8 +28,8 @@ Stessa pagina, un secondo token: Repository access **solo `lorentsob/migrazioni`
 
 ## 4. Token Cloudflare e secret nella regia (5 min)
 
-- Dashboard Cloudflare → My Profile → API Tokens → modifica il token usato per `CLOUDFLARE_WORKERS_TOKEN`
-  (quello di B4 S2-A) aggiungendo: **Zone → DNS → Edit** su `lorentso.it` e sulle zone dei siti
+- Dashboard Cloudflare → My Profile → API Tokens → modifica il token `github-cisterna-workers` (è quello usato per `CLOUDFLARE_WORKERS_TOKEN`
+  in B4 S2-A) aggiungendo: **Zone → DNS → Edit** su `lorentso.it` e sulle zone dei siti
   (`lorenzoboschi.it`, …) e **Zone → Workers Routes → Edit** sulle stesse zone. Oppure creane uno nuovo con
   Workers Scripts: Edit + quei permessi e usa quello.
 - Dal Mac, nella cartella del repo `migrazioni` clonato: `regia/copia-secret.sh lorentsob/migrazioni`.
