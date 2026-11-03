@@ -3,15 +3,21 @@
   "sito": "lorenzoboschi",
   "fasi": {
     "prepara": {
-      "esito": "IN_CORSO",
+      "esito": "FAIL",
       "inizio": "2026-11-03T22:03:29.369Z",
-      "fine": null,
+      "fine": "2026-11-03T22:03:31.742Z",
       "run": "41727335701",
-      "passi": [],
-      "errore": null,
+      "passi": [
+        {
+          "nome": "repo del sito",
+          "esito": "lorentsob/portfolio-lorenzo-boschi@main 071ef3e",
+          "quando": "2026-11-03T22:03:31.621Z"
+        }
+      ],
+      "errore": "Vercel progetto prj_HOCAc0Qhy4I4McsisQsI4tcOmQ1e -> HTTP 404",
       "attesa": null
     }
   },
   "valori": {},
-  "aggiornato": "2026-11-03T22:03:29.369Z"
+  "aggiornato": "2026-11-03T22:03:31.742Z"
 }
