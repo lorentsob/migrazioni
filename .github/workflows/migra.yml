@@ -68,7 +68,7 @@ jobs:
           git add stato vps
           if git diff --cached --quiet; then exit 0; fi
           git -c user.name=regia-migrazioni -c user.email=regia@lorentso.it commit -q -m "stato: salvataggio di emergenza (run $GITHUB_RUN_ID)"
-          git pull -q --rebase origin main && git push -q origin HEAD:main
+          git -c user.name=regia-migrazioni -c user.email=regia@lorentso.it pull -q --rebase origin main && git push -q origin HEAD:main
 
       - name: Avviso di errore della regia (fuori dalla fase)
         if: failure()

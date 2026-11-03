@@ -210,7 +210,8 @@ export function telegram(env, { fetchFn = fetch } = {}) {
 
 // ---------- Regia: file in stato/ e vps/ del checkout corrente, con commit e push ----------
 export function regia({ radice, esegui = eseguiReale, sleep = sleepReale, ramo = 'main' } = {}) {
-  const git = (args, opt = {}) => esegui('git', args, { cwd: radice, ...opt });
+  // Identità fissa: sul runner non c'è una configurazione git globale (commit e rebase la richiedono).
+  const git = (args, opt = {}) => esegui('git', ['-c', 'user.name=regia-migrazioni', '-c', 'user.email=regia@lorentso.it', ...args], { cwd: radice, ...opt });
   const leggiLocale = p => (existsSync(join(radice, p)) ? readFileSync(join(radice, p), 'utf8') : null);
   return {
     leggi: p => { const t = leggiLocale(p); return t == null ? null : JSON.parse(t); },
@@ -220,7 +221,7 @@ export function regia({ radice, esegui = eseguiReale, sleep = sleepReale, ramo =
       writeFileSync(join(radice, p), `${JSON.stringify(oggetto, null, 2)}\n`);
       git(['add', p]);
       if (git(['diff', '--cached', '--quiet'], { silenzioso: true }).status === 0) return false;
-      git(['-c', 'user.name=regia-migrazioni', '-c', 'user.email=regia@lorentso.it', 'commit', '--quiet', '-m', messaggio]);
+      git(['commit', '--quiet', '-m', messaggio]);
       git(['pull', '--quiet', '--rebase', 'origin', ramo]);
       git(['push', '--quiet', 'origin', `HEAD:${ramo}`]);
       return true;
