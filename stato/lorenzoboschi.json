@@ -1,0 +1,17 @@
+{
+  "schema": "stato/v1",
+  "sito": "lorenzoboschi",
+  "fasi": {
+    "prepara": {
+      "esito": "IN_CORSO",
+      "inizio": "2026-11-03T22:03:29.369Z",
+      "fine": null,
+      "run": "41727335701",
+      "passi": [],
+      "errore": null,
+      "attesa": null
+    }
+  },
+  "valori": {},
+  "aggiornato": "2026-11-03T22:03:29.369Z"
+}
