@@ -3,15 +3,55 @@
   "sito": "lorenzoboschi",
   "fasi": {
     "prepara": {
-      "esito": "IN_CORSO",
+      "esito": "FAIL",
       "inizio": "2026-11-03T22:10:13.951Z",
-      "fine": null,
+      "fine": "2026-11-03T22:10:27.287Z",
       "run": "41728373857",
-      "passi": [],
-      "errore": null,
+      "passi": [
+        {
+          "nome": "repo del sito",
+          "esito": "lorentsob/portfolio-lorenzo-boschi@main 071ef3e",
+          "quando": "2026-11-03T22:10:17.529Z"
+        },
+        {
+          "nome": "progetto Vercel",
+          "esito": "portfolio-lorenzo-boschi (nextjs)",
+          "quando": "2026-11-03T22:10:17.707Z"
+        },
+        {
+          "nome": "variabili Vercel in Preview",
+          "esito": "stesse di Production",
+          "quando": "2026-11-03T22:10:17.807Z"
+        },
+        {
+          "nome": "record DNS di collaudo",
+          "esito": "creato A collaudo-lorenzoboschi.lorentso.it -> VPS (proxied)",
+          "quando": "2026-11-03T22:10:18.958Z"
+        },
+        {
+          "nome": "bypass Vercel",
+          "esito": "generato",
+          "quando": "2026-11-03T22:10:19.177Z"
+        },
+        {
+          "nome": "secret del sito",
+          "esito": "8 impostati (0 esistevano già)",
+          "quando": "2026-11-03T22:10:25.098Z"
+        },
+        {
+          "nome": "variabili del sito",
+          "esito": "DOMINIO_COLLAUDO, VERCEL_ALIAS_TEST, CLOUDFLARE_ACCOUNT_ID",
+          "quando": "2026-11-03T22:10:26.451Z"
+        }
+      ],
+      "errore": "Coolify GET /applications -> HTTP 401: Unauthenticated.",
       "attesa": null
     }
   },
-  "valori": {},
-  "aggiornato": "2026-11-03T22:10:13.951Z"
+  "valori": {
+    "variabiliPreviewMancanti": [],
+    "dominioCollaudo": "collaudo-lorenzoboschi.lorentso.it",
+    "aliasCollaudo": "lorenzoboschi-collaudo-lorentsob.vercel.app"
+  },
+  "aggiornato": "2026-11-03T22:10:27.287Z"
 }
