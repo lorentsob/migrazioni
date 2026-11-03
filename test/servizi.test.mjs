@@ -74,7 +74,7 @@ test('telegram: senza token non invia; con token un POST con il link al run', as
 });
 test('regia: salva fa commit, pull --rebase e push una volta; niente commit se il file non cambia; leggiRemoto usa git show', async () => {
   const radice = mkdtempSync(join(tmpdir(), 'regia-')); mkdirSync(join(radice, 'stato'));
-  const git = []; let senzaCambi = false; const esegui = (c, a, o) => { git.push(a.filter(x => !x.startsWith('-c') && !/regia/.test(x)).join(' ')); if (a[0] === 'diff') return { status: senzaCambi ? 0 : 1 }; if (a[0] === 'show') return { status: 0, stdout: '{"esito":"PASS"}' }; return { status: 0, stdout: '' }; };
+  const git = []; let senzaCambi = false; const esegui = (c, a0, o) => { const a = a0.filter(x => !x.startsWith('-c') && !/regia/.test(x)); git.push(a.join(' ')); if (a[0] === 'diff') return { status: senzaCambi ? 0 : 1 }; if (a[0] === 'show') return { status: 0, stdout: '{"esito":"PASS"}' }; return { status: 0, stdout: '' }; };
   const r = regia({ radice, esegui, sleep: async () => {} });
   assert.equal(r.salva('stato/x.json', { a: 1 }, 'msg'), true);
   assert.deepEqual(git, ['add stato/x.json', 'diff --cached --quiet', 'commit --quiet -m msg', 'pull --quiet --rebase origin main', 'push --quiet origin HEAD:main']);
