@@ -12,8 +12,9 @@ Poi dillo a Claude: lo aggiunge alla sessione (`add_repo`) e fa il push del cont
 ## 2. Token GitHub "migrazioni-regia" (5 min)
 
 https://github.com/settings/personal-access-tokens/new → Fine-grained:
-- Repository access: **Only select repositories** → i repo dei siti da migrare
-  (`portfolio-lorenzo-boschi`, `cisterna`, `incontroluce`, …; `desmare` è di un altro owner: si vedrà dopo).
+- Repository access: **All repositories** (scelta di Lorenzo, 3/11: così un repo nuovo si migra senza
+  rifare il token). La regia tocca comunque solo i repo scritti in `siti/<sito>.json`. I repo di un altro
+  owner (es. `desmare1`) non sono coperti: per quelli servirà un token di quell'account.
 - Permissions (Repository): Actions **Read and write**, Contents **Read and write**, Metadata Read,
   Pull requests **Read and write**, Secrets **Read and write**, Variables **Read and write**, Workflows **Read and write**.
 - Scadenza: 90 giorni va bene (la regia avvisa su Telegram se le chiamate falliscono).
