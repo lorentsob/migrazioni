@@ -1,0 +1,17 @@
+{
+  "uuid": "enyu6cuyegf9xci4dofufxdj",
+  "sito": "lorenzoboschi",
+  "voluto": "registrata",
+  "richiesto": "2026-11-03T22:19:02.034Z",
+  "reale": {
+    "reviewed": true,
+    "restricted": false,
+    "retired": false,
+    "backup": true,
+    "cartella": true
+  },
+  "esito": "PASS",
+  "dettagli": "policy reviewed_apps; backup: 4 voci aggiunte, 0 gi\u00e0 presenti; copertura backup ok, oracle-security-alerts inactive",
+  "applicato": "2026-11-03T22:21:42+00:00",
+  "aggiornato": "2026-11-03T22:21:42+00:00"
+}
