@@ -33,7 +33,11 @@ async function chiamaJson(fetchFn, nome, url, init = {}) {
   let json = null; try { json = testo ? JSON.parse(testo) : {}; } catch { /* non JSON */ }
   return { ok: r.ok, status: r.status, json, testo, nome };
 }
-const atteso = (r, cosa) => { if (!r.ok) throw new Stop(`${cosa} -> HTTP ${r.status}${r.json?.message ? `: ${String(r.json.message).slice(0, 160)}` : ''}`); return r.json; };
+const atteso = (r, cosa) => {
+  if (r.ok) return r.json;
+  const msg = r.json?.message ?? r.json?.error?.message ?? (r.testo && !r.json ? r.testo : '');
+  throw new Stop(`${cosa} -> HTTP ${r.status}${msg ? `: ${String(msg).slice(0, 160)}` : ''}`);
+};
 
 // ---------- GitHub (repository del sito) ----------
 export function github(env, { fetchFn = fetch, esegui = eseguiReale } = {}) {
