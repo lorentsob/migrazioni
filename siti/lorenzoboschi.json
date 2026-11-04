@@ -20,5 +20,8 @@
   "variabiliRichieste": [
     "PRISMIC_WEBHOOK_SECRET"
   ],
-  "webhook": "/api/revalidate"
+  "webhook": "/api/revalidate",
+  "ok": {
+    "cutover": "2026-11-04T18:06:17Z Lorenzo: ok cutover DNS, vai ora (scheda decisione)"
+  }
 }
