@@ -10,13 +10,5 @@
       "richiesto": "2026-11-03T22:19:02.034Z"
     }
   ],
-  "verifiche": [
-    {
-      "id": "lorenzoboschi-collaudo-certificato-93ea1a6",
-      "tipo": "certificato",
-      "dominio": "collaudo-lorenzoboschi.lorentso.it",
-      "richiesto": "2026-11-04T16:38:27.025Z",
-      "scade": "2026-11-04T17:08:27.025Z"
-    }
-  ]
+  "verifiche": []
 }
