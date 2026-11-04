@@ -108,12 +108,43 @@
       }
     },
     "cutover": {
-      "esito": "IN_CORSO",
+      "esito": "FAIL",
       "inizio": "2026-11-04T17:30:58.842Z",
-      "fine": null,
+      "fine": "2026-11-04T17:38:46.491Z",
       "run": "41878146450",
-      "passi": [],
-      "errore": null,
+      "passi": [
+        {
+          "nome": "PR del sito",
+          "esito": "aperta, testa 93ea1a6 = commit collaudato",
+          "quando": "2026-11-04T17:31:01.566Z"
+        },
+        {
+          "nome": "export della zona",
+          "esito": "già salvato il 2026-11-04T17:20:30.239Z (31 record)",
+          "quando": "2026-11-04T17:31:02.355Z"
+        },
+        {
+          "nome": "variabili sulla risorsa",
+          "esito": "4 copiate da Vercel Production (PRISMIC_WEBHOOK_SECRET, ADAPTIVE_MAX_REQUESTS_PER_IP, SITE_URL, NEXT_PUBLIC_PRISMIC_ENVIRONMENT), valori mai stampati; tolte: nessuna",
+          "quando": "2026-11-04T17:31:21.296Z"
+        },
+        {
+          "nome": "dominio di backup",
+          "esito": "backup.lorenzoboschi.it su Vercel, HTTP 307",
+          "quando": "2026-11-04T17:31:22.689Z"
+        },
+        {
+          "nome": "Worker ACME temporaneo",
+          "esito": "lorenzoboschi-acme su lorenzoboschi.it/.well-known/acme-challenge/*, www.lorenzoboschi.it/.well-known/acme-challenge/* (Always Use HTTPS: off)",
+          "quando": "2026-11-04T17:31:26.504Z"
+        },
+        {
+          "nome": "domini sulla risorsa",
+          "esito": "https://collaudo-lorenzoboschi.lorentso.it,https://lorenzoboschi.it,https://www.lorenzoboschi.it, www → dominio; deploy finito",
+          "quando": "2026-11-04T17:31:35.360Z"
+        }
+      ],
+      "errore": "certificato dall'origine per lorenzoboschi.it non valido: Verify return code: 18 (self-signed certificate)",
       "attesa": null
     }
   },
@@ -128,5 +159,5 @@
     "runCollaudo": "41867902977",
     "cutover": {}
   },
-  "aggiornato": "2026-11-04T17:30:58.842Z"
+  "aggiornato": "2026-11-04T17:38:46.491Z"
 }
