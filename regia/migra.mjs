@@ -10,15 +10,18 @@ import { nuovoStato, precedentePass, apriFase, chiudiFase, ORDINE } from './lib/
 import * as servizi from './lib/servizi.mjs';
 import { prepara } from './fasi/prepara.mjs';
 import { collaudo } from './fasi/collaudo.mjs';
+import { cutover } from './fasi/cutover.mjs';
+import { failover } from './fasi/failover.mjs';
+import { chiudi } from './fasi/chiudi.mjs';
 
-export const FASI = { prepara, collaudo };
+export const FASI = { prepara, collaudo, cutover, failover, chiudi };
 const RADICE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 export function serviziReali(env, config, radice = RADICE) {
   return {
     gh: servizi.github(env), vercel: servizi.vercel(env), coolify: servizi.coolify(env, config),
     cloudflare: servizi.cloudflare({ ...env, CLOUDFLARE_API_TOKEN: env.CLOUDFLARE_API_TOKEN || env.CLOUDFLARE_WORKERS_TOKEN }),
-    regia: servizi.regia({ radice }), avvisa: servizi.telegram(env), esegui: servizi.eseguiReale, sleep: servizi.sleepReale,
+    regia: servizi.regia({ radice }), http: servizi.http(), avvisa: servizi.telegram(env), esegui: servizi.eseguiReale, sleep: servizi.sleepReale,
     ora: () => new Date().toISOString(), log: m => console.log(m),
   };
 }
@@ -45,7 +48,11 @@ export async function migra(percorsoScheda, { env, config, s, testo = null }) {
   for (const f of ORDINE.slice(ORDINE.indexOf(fase) + 1)) delete stato.fasi[f];
   s.regia.salva(percorsoStato, stato, `stato: ${scheda.sito} ${fase} in corso`);
   let esito = 'PASS', messaggio;
-  try { messaggio = await FASI[fase](scheda, s, { env, config, stato, fase: stato.fasi[fase] }); }
+  try {
+    messaggio = await FASI[fase](scheda, s, { env, config, stato, fase: stato.fasi[fase] });
+    // Fase ferma in attesa di un ok di Lorenzo (es. cutover prima del DNS): non è PASS, la successiva non parte.
+    if (stato.fasi[fase].sospesa) { esito = 'ATTESA'; delete stato.fasi[fase].sospesa; }
+  }
   catch (e) {
     esito = 'FAIL'; messaggio = `${fase} FAIL per ${scheda.sito}: ${e.message}`;
     stato.fasi[fase].errore = e.message;
@@ -53,7 +60,7 @@ export async function migra(percorsoScheda, { env, config, s, testo = null }) {
   }
   chiudiFase(stato, fase, { esito, errore: stato.fasi[fase].errore, attesa: stato.fasi[fase].attesa, ora: s.ora() });
   s.regia.salva(percorsoStato, stato, `stato: ${scheda.sito} ${fase} ${esito}`);
-  await s.avvisa(`${esito === 'PASS' ? 'MIGRAZIONE' : 'STOP migrazione'} ${messaggio}`);
+  await s.avvisa(`${esito === 'PASS' ? 'MIGRAZIONE' : esito === 'ATTESA' ? 'MIGRAZIONE in attesa:' : 'STOP migrazione'} ${messaggio}`);
   s.log(messaggio);
   return { esito, messaggio };
 }
@@ -70,5 +77,5 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     r = await migra(resolve(percorso), { env, config, s: serviziReali(env, config) });
   }
   catch (e) { console.error(`FAIL ${e.message}`); process.exit(1); }
-  process.exit(r.esito === 'PASS' || r.esito === 'NIENTE' ? 0 : 1);
+  process.exit(['PASS', 'NIENTE', 'ATTESA'].includes(r.esito) ? 0 : 1);
 }

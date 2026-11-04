@@ -32,6 +32,9 @@ export function validaScheda(s, config = {}) {
   if (r.node != null && !/^\d+\.\d+\.\d+$/.test(r.node)) err('rilascio.node: versione completa (es. 22.18.0)');
   if (r.contestoExtra != null && !/^[A-Za-z0-9._\/ -]*$/.test(r.contestoExtra)) err('rilascio.contestoExtra: nomi separati da spazio');
   if (s.ok != null && typeof s.ok !== 'object') err('ok: oggetto {collaudo, cutover} con le date degli ok di Lorenzo');
+  if (s.ok?.cutover != null && typeof s.ok.cutover !== 'string') err('ok.cutover: data e testo dell\'ok di Lorenzo (stringa)');
+  if (s.variabiliRichieste != null && !(Array.isArray(s.variabiliRichieste) && s.variabiliRichieste.every(k => /^[A-Z][A-Z0-9_]*$/.test(k)))) err('variabiliRichieste: nomi di variabili Vercel');
+  if (s.webhook != null && !/^\/[A-Za-z0-9._\/-]+$/.test(s.webhook)) err('webhook: percorso (es. /api/revalidate)');
   return completa(s, config);
 }
 
