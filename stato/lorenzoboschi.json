@@ -108,12 +108,33 @@
       }
     },
     "cutover": {
-      "esito": "IN_CORSO",
+      "esito": "FAIL",
       "inizio": "2026-11-04T17:20:26.970Z",
-      "fine": null,
+      "fine": "2026-11-04T17:21:22.546Z",
       "run": "41876590184",
-      "passi": [],
-      "errore": null,
+      "passi": [
+        {
+          "nome": "PR del sito",
+          "esito": "aperta, testa 93ea1a6 = commit collaudato",
+          "quando": "2026-11-04T17:20:29.909Z"
+        },
+        {
+          "nome": "export della zona",
+          "esito": "31 record salvati in stato/zone/lorenzoboschi-prima-del-cutover.json",
+          "quando": "2026-11-04T17:20:32.722Z"
+        },
+        {
+          "nome": "variabili sulla risorsa",
+          "esito": "4 copiate da Vercel Production (PRISMIC_WEBHOOK_SECRET, ADAPTIVE_MAX_REQUESTS_PER_IP, SITE_URL, NEXT_PUBLIC_PRISMIC_ENVIRONMENT), valori mai stampati; tolte: WHOAMI_PORT_NUMBER, WHOAMI_PORT_NUMBER",
+          "quando": "2026-11-04T17:20:34.816Z"
+        },
+        {
+          "nome": "dominio di backup",
+          "esito": "backup.lorenzoboschi.it su Vercel, HTTP 307",
+          "quando": "2026-11-04T17:21:22.043Z"
+        }
+      ],
+      "errore": "\"Always Use HTTPS\" è attivo sulla zona lorenzoboschi.it: la sfida HTTP-01 non arriverebbe al Worker ACME (runbook D7: va spento)",
       "attesa": null
     }
   },
@@ -125,7 +146,8 @@
     "ramoCodice": "collaudo/rilascio-unico",
     "pr": "https://github.com/lorentsob/portfolio-lorenzo-boschi/pull/6",
     "commitCollaudo": "93ea1a65648ed5c1753a9d0ffc3d571ce4c41631",
-    "runCollaudo": "41867902977"
+    "runCollaudo": "41867902977",
+    "cutover": {}
   },
-  "aggiornato": "2026-11-04T17:20:26.970Z"
+  "aggiornato": "2026-11-04T17:21:22.546Z"
 }
