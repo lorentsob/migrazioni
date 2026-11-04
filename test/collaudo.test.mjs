@@ -55,3 +55,12 @@ test('rilascio di collaudo fallito o verifica-sito fallita o certificato non ok:
   await assert.rejects(collaudo(scheda, c.s, { env: ENV, config: CONFIG, stato: c.stato, fase: c.fase }), /certificato dall'origine/);
   assert.notEqual(c.fase.attesa, 'ok collaudo');
 });
+test('rilascio già in corso sul ramo (push): si aspetta la fine e, se completo per la testa, nessun nuovo lancio né cancellazione', async () => {
+  let giri = 0;
+  const { s, stato, fase } = pronto({ runs: [{ id: 7, sha: T, stato: 'in_progress', esito: null, url: 'u' }], file: { ...FILE, 'release.json': JSON.stringify({ commit: T, esito: 'in corso' }) } });
+  s.sleep = async () => { if (++giri === 2) { s.mondo.runs = [{ id: 7, sha: T, stato: 'completed', esito: 'success', url: 'u' }]; s.mondo.file['release.json'] = JSON.stringify({ commit: T, esito: 'completo', runId: '7' }); } };
+  await collaudo(scheda, s, { env: ENV, config: CONFIG, stato, fase });
+  const n = s.chiamate.map(c => c[0]);
+  assert.ok(!n.includes('gh.cancellaRamo')); assert.ok(!n.includes('gh.lanciaWorkflow'));
+  assert.equal(fase.attesa, 'ok collaudo'); assert.equal(stato.valori.runCollaudo, '7');
+});

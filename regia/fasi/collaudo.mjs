@@ -21,6 +21,17 @@ export async function collaudo(scheda, s, { env, config, stato, fase }) {
   passo('prerequisiti del codice', `ok su ${testa.slice(0, 7)}`);
 
   // 2. Registro di collaudo: se fermo si cancella (è un registro di prova), poi rilascio per la testa del ramo
+  // Un rilascio già partito (per esempio dal push del ramo) si aspetta: il suo registro non va
+  // cancellato mentre lavora, e se finisce bene per la testa del ramo non si rilascia di nuovo.
+  const inCorso = async () => (await s.gh.runDelRamo(scheda.repo, 'rilascio-unico.yml', scheda.ramoCodice)).filter(r => r.stato !== 'completed');
+  if ((await inCorso()).length) {
+    const limite = Date.now() + config.attesaRilascioMinuti * 60000;
+    while ((await inCorso()).length) {
+      if (Date.now() > limite) throw new Stop(`un rilascio sul ramo ${scheda.ramoCodice} è ancora in corso dopo ${config.attesaRilascioMinuti} minuti`);
+      await s.sleep(30000);
+    }
+    passo('rilascio già in corso', 'atteso fino alla fine');
+  }
   const ramoRegistro = 'rilasci-collaudo';
   const leggiRegistro = async () => { const t = await s.gh.file(scheda.repo, 'release.json', ramoRegistro); return t ? JSON.parse(t) : null; };
   let release = await leggiRegistro();

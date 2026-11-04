@@ -2,6 +2,7 @@
 # Non ricompila Next: copia lo standalone e gli asset (quelli nuovi più quelli conservati).
 # Le dipendenze di produzione vengono reinstallate per arm64, perché lo standalone
 # generato sul runner contiene i binari nativi x64 (per esempio sharp).
+# NODE_IMAGE arriva dal workflow (node:<NODE_VERSION>-bookworm-slim): runtime e build sulla stessa versione.
 # Contesto preparato dal workflow: standalone/ static/ public/ package.json
 # package-lock.json healthcheck.cjs ed eventuali file in CONTESTO_EXTRA (.npmrc, shims/...).
 ARG NODE_IMAGE=node:24.22.1-bookworm-slim

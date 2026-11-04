@@ -177,7 +177,7 @@ jobs:
           if out="$(docker manifest inspect "$IMMAGINE:$tag" 2>&1)"; then echo "FAIL il tag $IMMAGINE:$tag esiste già: non si riassegna"; exit 1
           elif ! grep -qiE 'no such manifest|manifest unknown|not found' <<<"$out"; then echo "FAIL controllo del tag non riuscito (non è un 'tag assente'): $(head -c 200 <<<"$out")"; exit 1; fi
           docker buildx build --platform linux/arm64 --push --provenance=false \
-            --build-arg "SOURCE_COMMIT=$COMMIT" \
+            --build-arg "SOURCE_COMMIT=$COMMIT" --build-arg "NODE_IMAGE=node:$NODE_VERSION-bookworm-slim" \
             --tag "$IMMAGINE:$tag" --metadata-file "$LAVORO/immagine.json" \
             -f "$ctx/Dockerfile.prebuilt" "$ctx"
           digest="$(jq -er '."containerimage.digest" | select(test("^sha256:[a-f0-9]{64}$"))' "$LAVORO/immagine.json")"
