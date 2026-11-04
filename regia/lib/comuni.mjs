@@ -44,7 +44,12 @@ export async function certificatiOrigine(s, config, scheda, nomi, etichetta) {
 export async function rilascio(s, scheda, config, { ramo = 'main', sha = null, lancia = false, registro = 'rilasci' }) {
   const prima = lancia ? (await s.gh.runDelRamo(scheda.repo, 'rilascio-unico.yml', ramo)).map(r => r.id) : [];
   if (lancia) await s.gh.lanciaWorkflow(scheda.repo, 'rilascio-unico.yml', ramo);
-  const scelto = runs => runs.filter(r => !prima.includes(r.id) && (!sha || r.sha === sha))[0] || null;
+  // Con lancia conta solo il run lanciato dalla regia (workflow_dispatch, il più vecchio tra i nuovi):
+  // un push di Lorenzo sullo stesso ramo nello stesso momento non va scambiato per il nostro.
+  const scelto = runs => {
+    const nuovi = runs.filter(r => !prima.includes(r.id) && (!sha || r.sha === sha) && (!lancia || !r.evento || r.evento === 'workflow_dispatch'));
+    return (lancia ? nuovi[nuovi.length - 1] : nuovi[0]) || null;
+  };
   const fine = Date.now() + config.attesaRilascioMinuti * 60000; let run = null;
   while (true) {
     run = scelto(await s.gh.runDelRamo(scheda.repo, 'rilascio-unico.yml', ramo));

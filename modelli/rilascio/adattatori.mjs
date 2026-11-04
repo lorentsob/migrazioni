@@ -112,7 +112,7 @@ export function vercel(env, { fetchFn = fetch, attesaMs = 5000, limiteMs = 3 * 6
 }
 
 /** release.json sul ramo dedicato (default "rilasci"); la versione è lo sha del blob GitHub. */
-export function registroGitHub(env, { fetchFn = fetch, file = 'release.json' } = {}) {
+export function registroGitHub(env, { fetchFn = fetch, file = 'release.json', attesaMs = 3000, tentativi = 4 } = {}) {
   serve(env, ['GITHUB_TOKEN', 'GITHUB_REPOSITORY']);
   const ramo = env.RAMO_REGISTRO || 'rilasci';
   const url = `https://api.github.com/repos/${env.GITHUB_REPOSITORY}/contents/${file}`;
@@ -128,10 +128,27 @@ export function registroGitHub(env, { fetchFn = fetch, file = 'release.json' } =
     async salva(release, versione) {
       const body = { message: `registro: ${release.sito} ${release.commit.slice(0, 7)} ${release.esito}`, branch: ramo,
         content: Buffer.from(`${JSON.stringify(release, null, 2)}\n`).toString('base64'), ...(versione ? { sha: versione } : {}) };
-      const r = await fetchFn(url, { method: 'PUT', headers, body: JSON.stringify(body) });
-      if (r.status === 409 || r.status === 422) throw new Error('registro modificato da un altro rilascio (conflitto di versione)');
-      if (!r.ok) throw new Error(`registro: scrittura HTTP ${r.status}`);
-      return (await r.json()).content.sha;
+      // Un errore di rete (run 41887773753: "fetch failed" sull'ultima scrittura) non deve lasciare il
+      // registro a metà: si ritenta. Se la scrittura persa era in realtà arrivata, il nuovo PUT dà
+      // conflitto: allora si rilegge e, se il contenuto è proprio il nostro, si prende la sua versione.
+      let reteKo = false, ultimo;
+      for (let i = 0; i < tentativi; i++) {
+        if (i) await sleep(attesaMs * i);
+        let r;
+        try { r = await fetchFn(url, { method: 'PUT', headers, body: JSON.stringify(body) }); }
+        catch (e) { reteKo = true; ultimo = e; continue; }
+        if (r.status === 409 || r.status === 422) {
+          if (reteKo) {
+            const g = await fetchFn(`${url}?ref=${encodeURIComponent(ramo)}`, { headers }).catch(() => null);
+            if (g?.ok) { const j = await g.json(); if (Buffer.from(j.content, 'base64').toString('utf8') === `${JSON.stringify(release, null, 2)}\n`) return j.sha; }
+          }
+          throw new Error('registro modificato da un altro rilascio (conflitto di versione)');
+        }
+        if (r.status >= 500) { ultimo = new Error(`registro: scrittura HTTP ${r.status}`); continue; }
+        if (!r.ok) throw new Error(`registro: scrittura HTTP ${r.status}`);
+        return (await r.json()).content.sha;
+      }
+      throw ultimo;
     },
   };
 }

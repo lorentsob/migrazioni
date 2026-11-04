@@ -131,7 +131,7 @@ export function github(env, { fetchFn = fetch, esegui = eseguiReale } = {}) {
     },
     async runDelRamo(repo, workflow, ramo) {
       const j = atteso(await api(`/repos/${repo}/actions/workflows/${workflow}/runs?branch=${encodeURIComponent(ramo)}&per_page=10`), 'GitHub run');
-      return (j.workflow_runs || []).map(r => ({ id: r.id, sha: r.head_sha, stato: r.status, esito: r.conclusion, creato: r.created_at, url: r.html_url }));
+      return (j.workflow_runs || []).map(r => ({ id: r.id, sha: r.head_sha, stato: r.status, esito: r.conclusion, evento: r.event, creato: r.created_at, url: r.html_url }));
     },
   };
 }

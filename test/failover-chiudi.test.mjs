@@ -67,3 +67,13 @@ test('chiudi: verifica-sito, certificati, poi pulizia di variabili, rami, nome d
   assert.ok(c.s.chiamate.some(x => x[0] === 'vercel.cancellaAlias' && x[1] === 'esempio-collaudo-lorentsob.vercel.app'));
   const ver = c.s.mondo.esecuzioni.find(e => e[0] === 'bash'); assert.deepEqual(ver.slice(2), ['esempio.it', 'backup.esempio.it', M]);
 });
+
+test('rilascio lanciato dalla regia: un push di Lorenzo nello stesso momento non viene scambiato per il nostro run', async () => {
+  const { rilascio } = await import('../regia/lib/comuni.mjs');
+  const c = base('failover');
+  // Il nostro run (dispatch) e, subito dopo, un push di Lorenzo fermato dal registro: l'elenco è dal più nuovo.
+  c.s.mondo.alLancio = m => { m.runs = [{ id: 31, sha: 'e'.repeat(40), stato: 'completed', esito: 'failure', evento: 'push', url: 'push' },
+    { id: 30, sha: M, stato: 'completed', esito: 'success', evento: 'workflow_dispatch', url: 'nostro' }, ...m.runs]; };
+  const { run } = await rilascio(c.s, c.scheda, CONFIG, { lancia: true });
+  assert.equal(run.url, 'nostro');
+});
