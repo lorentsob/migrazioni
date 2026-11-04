@@ -100,7 +100,12 @@
         }
       ],
       "errore": null,
-      "attesa": "ok collaudo"
+      "attesa": null,
+      "ok": {
+        "da": "Lorenzo",
+        "quando": "2026-11-04T16:55:20Z",
+        "testo": "ok bene funziona procediamo"
+      }
     }
   },
   "valori": {
@@ -113,5 +118,5 @@
     "commitCollaudo": "93ea1a65648ed5c1753a9d0ffc3d571ce4c41631",
     "runCollaudo": "41867902977"
   },
-  "aggiornato": "2026-11-04T16:39:32.404Z"
+  "aggiornato": "2026-11-04T16:55:20Z"
 }
