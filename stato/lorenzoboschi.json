@@ -66,6 +66,15 @@
       ],
       "errore": null,
       "attesa": null
+    },
+    "collaudo": {
+      "esito": "IN_CORSO",
+      "inizio": "2026-11-04T16:37:00.899Z",
+      "fine": null,
+      "run": "41869016071",
+      "passi": [],
+      "errore": null,
+      "attesa": null
     }
   },
   "valori": {
@@ -76,5 +85,5 @@
     "ramoCodice": "collaudo/rilascio-unico",
     "pr": "https://github.com/lorentsob/portfolio-lorenzo-boschi/pull/6"
   },
-  "aggiornato": "2026-11-03T22:22:18.440Z"
+  "aggiornato": "2026-11-04T16:37:00.899Z"
 }
