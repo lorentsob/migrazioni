@@ -144,7 +144,7 @@ export function registroGitHub(env, { fetchFn = fetch, file = 'release.json', at
           }
           throw new Error('registro modificato da un altro rilascio (conflitto di versione)');
         }
-        if (r.status >= 500) { ultimo = new Error(`registro: scrittura HTTP ${r.status}`); continue; }
+        if (r.status >= 500) { reteKo = true; ultimo = new Error(`registro: scrittura HTTP ${r.status}`); continue; }
         if (!r.ok) throw new Error(`registro: scrittura HTTP ${r.status}`);
         return (await r.json()).content.sha;
       }

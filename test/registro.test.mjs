@@ -30,3 +30,12 @@ test('registro: rete giù per tutti i tentativi → errore', async () => {
   const reg = registroGitHub(ENV, { attesaMs: 0, fetchFn: async () => { throw new Error('fetch failed'); } });
   await assert.rejects(reg.salva(REL, 'v1'), /fetch failed/);
 });
+
+test('registro: 502 ma la scrittura era arrivata → conflitto, rilettura, versione accettata', async () => {
+  let n = 0; const scritto = Buffer.from(`${JSON.stringify(REL, null, 2)}\n`).toString('base64');
+  const reg = registroGitHub(ENV, { attesaMs: 0, fetchFn: async (u, o) => {
+    if (o?.method === 'PUT') return risposta(n++ === 0 ? 502 : 409);
+    return risposta(200, { sha: 'v2', content: scritto });
+  } });
+  assert.equal(await reg.salva(REL, 'v1'), 'v2');
+});
