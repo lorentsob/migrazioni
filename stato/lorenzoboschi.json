@@ -108,54 +108,13 @@
       }
     },
     "cutover": {
-      "esito": "ATTESA",
-      "inizio": "2026-11-04T17:54:06.822Z",
-      "fine": "2026-11-04T18:05:34.338Z",
-      "run": "41881535110",
-      "passi": [
-        {
-          "nome": "PR del sito",
-          "esito": "aperta, testa 93ea1a6 = commit collaudato",
-          "quando": "2026-11-04T17:54:09.398Z"
-        },
-        {
-          "nome": "export della zona",
-          "esito": "già salvato il 2026-11-04T17:20:30.239Z (31 record)",
-          "quando": "2026-11-04T17:54:09.727Z"
-        },
-        {
-          "nome": "variabili sulla risorsa",
-          "esito": "4 copiate da Vercel Production (PRISMIC_WEBHOOK_SECRET, ADAPTIVE_MAX_REQUESTS_PER_IP, SITE_URL, NEXT_PUBLIC_PRISMIC_ENVIRONMENT), valori mai stampati; tolte: nessuna",
-          "quando": "2026-11-04T17:54:12.307Z"
-        },
-        {
-          "nome": "dominio di backup",
-          "esito": "backup.lorenzoboschi.it su Vercel, HTTP 307",
-          "quando": "2026-11-04T17:54:12.924Z"
-        },
-        {
-          "nome": "proxy Cloudflare verso Vercel",
-          "esito": "A lorenzoboschi.it, CNAME www.lorenzoboschi.it ora in proxy (SSL full), sito ok",
-          "quando": "2026-11-04T17:54:35.528Z"
-        },
-        {
-          "nome": "Worker ACME temporaneo",
-          "esito": "lorenzoboschi-acme su lorenzoboschi.it/.well-known/acme-challenge/*, www.lorenzoboschi.it/.well-known/acme-challenge/* (Always Use HTTPS: off)",
-          "quando": "2026-11-04T17:54:36.852Z"
-        },
-        {
-          "nome": "domini sulla risorsa",
-          "esito": "già impostati; deploy per le variabili finito",
-          "quando": "2026-11-04T17:54:44.552Z"
-        },
-        {
-          "nome": "certificato dall'origine",
-          "esito": "ok per lorenzoboschi.it, www.lorenzoboschi.it",
-          "quando": "2026-11-04T18:05:34.338Z"
-        }
-      ],
+      "esito": "IN_CORSO",
+      "inizio": "2026-11-04T18:07:33.656Z",
+      "fine": null,
+      "run": "41883928994",
+      "passi": [],
       "errore": null,
-      "attesa": "ok cutover DNS"
+      "attesa": null
     }
   },
   "valori": {
@@ -169,5 +128,5 @@
     "runCollaudo": "41867902977",
     "cutover": {}
   },
-  "aggiornato": "2026-11-04T18:05:34.338Z"
+  "aggiornato": "2026-11-04T18:07:33.656Z"
 }
