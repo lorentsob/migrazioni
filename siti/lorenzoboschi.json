@@ -1,7 +1,7 @@
 {
   "schema": "sito/v1",
   "sito": "lorenzoboschi",
-  "fase": "prepara",
+  "fase": "collaudo",
   "repo": "lorentsob/portfolio-lorenzo-boschi",
   "ramo": "main",
   "dominio": "lorenzoboschi.it",
@@ -12,9 +12,9 @@
   "statico": false,
   "rilascio": {
     "pagine": "/it /en",
-    "immagineDiProva": "/favicon.ico",
+    "immagineDiProva": null,
     "contestoExtra": "",
-    "node": "22.18.0"
+    "node": "22.23.4"
   },
-  "note": "Scheda da coolify/inventory/lorenzoboschi.md (22/10). Prima di mettere fase=prepara: confermare il progetto Vercel e l'immagine di prova; C2 deve sistemare i due next.config, KV (KV_REST_API_URL/TOKEN in Preview), /api/revalidate senza secret, engines node <24 (lo standalone gira su node:24 nell'immagine). Rilancio prepara 3/11 22:18 UTC con token Vercel e Coolify nuovi."
+  "note": "Scheda da coolify/inventory/lorenzoboschi.md (22/10). C2 fatto il 4/11 (ramo collaudo/rilascio-unico): Node 22.23.4 come .nvmrc; immagineDiProva null perché le immagini passano dal loader custom imgix (nessun /_next/image). Prima del cutover: PRISMIC_WEBHOOK_SECRET in Vercel e nel webhook Prismic, e variabili di runtime sulla risorsa Coolify."
 }
