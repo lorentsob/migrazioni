@@ -106,6 +106,15 @@
         "quando": "2026-11-04T16:55:20Z",
         "testo": "ok bene funziona procediamo"
       }
+    },
+    "cutover": {
+      "esito": "IN_CORSO",
+      "inizio": "2026-11-04T17:20:26.970Z",
+      "fine": null,
+      "run": "41876590184",
+      "passi": [],
+      "errore": null,
+      "attesa": null
     }
   },
   "valori": {
@@ -118,5 +127,5 @@
     "commitCollaudo": "93ea1a65648ed5c1753a9d0ffc3d571ce4c41631",
     "runCollaudo": "41867902977"
   },
-  "aggiornato": "2026-11-04T16:55:20Z"
+  "aggiornato": "2026-11-04T17:20:26.970Z"
 }
