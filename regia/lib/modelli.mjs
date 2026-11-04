@@ -14,7 +14,7 @@ export function configuraWorkflow(testo, scheda) {
   const valori = {
     SITO: scheda.dominio, DOMINIO: scheda.dominio, BACKUP_DOMINIO: scheda.backupDominio, IMMAGINE: scheda.rilascio.immagine,
     VERCEL_ORG_ID: scheda.vercel.team, VERCEL_PROJECT_ID: scheda.vercel.progetto, PAGINE: scheda.rilascio.pagine,
-    IMMAGINE_DI_PROVA: scheda.rilascio.immagineDiProva, CONTESTO_EXTRA: scheda.rilascio.contestoExtra, NODE_VERSION: scheda.rilascio.node,
+    IMMAGINE_DI_PROVA: scheda.rilascio.immagineDiProva ?? '', CONTESTO_EXTRA: scheda.rilascio.contestoExtra, NODE_VERSION: scheda.rilascio.node,
   };
   const righe = testo.split('\n');
   const inizio = righe.findIndex(l => /CONFIGURAZIONE DEL SITO/.test(l));

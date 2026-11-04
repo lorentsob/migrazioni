@@ -51,3 +51,8 @@ test('prerequisiti del codice: riconoscono standalone, health, healthcheck, verc
   const esiti = await Promise.all(PREREQUISITI_CODICE.map(p => p.verifica(senza, leggi)));
   assert.deepEqual(esiti.map(Boolean), [false, false, true, true, true, true]);
 });
+test('immagineDiProva null (sito con loader immagini custom, senza /_next/image): IMMAGINE_DI_PROVA vuota, il pre-check salta l\'ottimizzatore', async () => {
+  const s = validaScheda({ ...SCHEDA, rilascio: { pagine: '/', node: '22.23.4', contestoExtra: '', immagineDiProva: null } }, CONFIG);
+  const u = configuraWorkflow(await readFile(join(MODELLI, 'rilascio-unico.yml'), 'utf8'), s);
+  assert.match(u, /^  IMMAGINE_DI_PROVA: ""$/m);
+});
