@@ -76,6 +76,9 @@ export async function cutover(scheda, s, { env, config, stato, fase }) {
   // A5. Worker ACME temporaneo (solo se i nomi veri non puntano già alla VPS)
   const giaSuVps = await tuttiSullaVps(s, zona, scheda, config);
   if (!giaSuVps) {
+    // Il Worker ACME vede solo il traffico che passa da Cloudflare: i nomi in "solo DNS" verso Vercel
+    // vanno messi in proxy (stessa destinazione, nessun cambio per i visitatori) prima delle route.
+    await proxyVersoVercel(s, zona, scheda, passo);
     const sempreHttps = await s.cloudflare.impostazione(zona, 'always_use_https');
     if (sempreHttps === 'on') throw new Stop(`"Always Use HTTPS" è attivo sulla zona ${scheda.dominio}: la sfida HTTP-01 non arriverebbe al Worker ACME (runbook D7: va spento)`);
     const orig = await s.cloudflare.record(zona, origineAcme(scheda));
@@ -182,6 +185,29 @@ export async function cutover(scheda, s, { env, config, stato, fase }) {
   catch (e) { passo('Worker ACME temporaneo', `AVVISO non tolto: ${e.message} (lo ritenta chiudi)`); }
 
   return `cutover PASS per ${scheda.sito}: https://${scheda.dominio} servito dalla VPS (${String(v.cutover.commit).slice(0, 7)}), Vercel in standby su ${bk}, posta intatta.\nLorenzo: apri il sito nel browser e controlla che tutto vada. Prossimo: fase failover.`;
+}
+
+/**
+ * Mette in proxy Cloudflare i record web ancora "solo DNS" (stessa destinazione Vercel). Richiede SSL
+ * Full o Full (strict), altrimenti Cloudflare parlerebbe in http con Vercel (redirect infinito).
+ * Se il sito non risponde più, i record tornano "solo DNS" e la fase si ferma.
+ */
+export async function proxyVersoVercel(s, zona, scheda, passo) {
+  const daCambiare = [];
+  for (const n of nomiWeb(scheda)) for (const r of (await s.cloudflare.record(zona, n)).filter(x => WEB.includes(x.tipo) && !x.proxied)) daCambiare.push({ ...r, nome: n });
+  if (!daCambiare.length) return;
+  const ssl = await s.cloudflare.impostazione(zona, 'ssl');
+  if (!['full', 'strict'].includes(ssl)) throw new Stop(`i record web di ${scheda.dominio} sono "solo DNS" e la modalità SSL della zona è "${ssl ?? 'non leggibile'}": per metterli in proxy serve Full o Full (strict)`);
+  for (const r of daCambiare) await s.cloudflare.aggiornaRecord(zona, r.id, { nome: r.nome, tipo: r.tipo, contenuto: r.contenuto, proxied: true });
+  await s.sleep(20000);
+  for (const n of nomiWeb(scheda)) {
+    const r = await finche(s, `https://${n}/`, x => x.status >= 200 && x.status < 400, { limiteMs: 2 * 60000 });
+    if (!(r.status >= 200 && r.status < 400)) {
+      for (const x of daCambiare) await s.cloudflare.aggiornaRecord(zona, x.id, { nome: x.nome, tipo: x.tipo, contenuto: x.contenuto, proxied: false });
+      throw new Stop(`con il proxy Cloudflare https://${n}/ risponde HTTP ${r.status}${r.errore ? ` (${r.errore})` : ''}: record rimessi "solo DNS", sito invariato`);
+    }
+  }
+  passo('proxy Cloudflare verso Vercel', `${daCambiare.map(r => `${r.tipo} ${r.nome}`).join(', ')} ora in proxy (SSL ${ssl}), sito ok`);
 }
 
 /** true se ogni nome web ha esattamente un record A verso la VPS. */

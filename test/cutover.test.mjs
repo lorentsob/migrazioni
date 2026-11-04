@@ -129,6 +129,20 @@ test('rilancio dopo il cutover riuscito: nessun nuovo merge né cambio DNS, expo
   assert.deepEqual(c.s.mondo.regiaFile['stato/zone/esempio-prima-del-cutover.json'], exp);
 });
 
+test('record web "solo DNS" verso Vercel: messi in proxy prima del Worker ACME (SSL full), rimessi se il sito non risponde', async () => {
+  const solo = () => DNS().map(r => ['A', 'CNAME'].includes(r.tipo) ? { ...r, proxied: false } : r);
+  let c = pronto({ mondo: { dns: solo(), impostazioni: { ssl: 'strict', always_use_https: 'off' } } });
+  await cutover(c.scheda, c.s, { env: ENV, config: CONFIG, stato: c.stato, fase: c.fase });
+  assert.ok(['esempio.it', 'www.esempio.it'].every(n => c.s.mondo.dns.find(r => r.nome === n && ['A', 'CNAME'].includes(r.tipo)).proxied));
+  const n = nomi(c.s); assert.ok(n.indexOf('cf.aggiornaRecord') < n.indexOf('cf.creaRotta'));
+  c = pronto({ mondo: { dns: solo(), impostazioni: { ssl: 'flexible' } } });
+  await assert.rejects(cutover(c.scheda, c.s, { env: ENV, config: CONFIG, stato: c.stato, fase: c.fase }), /Full o Full \(strict\)/);
+  assert.ok(!nomi(c.s).includes('cf.aggiornaRecord'));
+  c = pronto({ mondo: { dns: solo(), impostazioni: { ssl: 'full' }, http: (u, o, m) => u === 'https://esempio.it/' ? { status: 525, headers: {}, testo: '' } : httpOk(u, o, m) } });
+  await assert.rejects(cutover(c.scheda, c.s, { env: ENV, config: CONFIG, stato: c.stato, fase: c.fase }), /rimessi "solo DNS"/);
+  assert.ok(c.s.mondo.dns.filter(r => ['A', 'CNAME'].includes(r.tipo)).every(r => !r.proxied));
+});
+
 test('Worker ACME: inoltra solo la sfida HTTP dei nomi del sito verso origin-vps', async () => {
   const scheda = validaScheda({ ...SCHEDA, fase: 'cutover' }, CONFIG);
   const src = codiceAcme(scheda);
