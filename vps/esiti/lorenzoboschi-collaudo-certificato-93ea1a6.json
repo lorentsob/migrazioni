@@ -1,0 +1,8 @@
+{
+  "id": "lorenzoboschi-collaudo-certificato-93ea1a6",
+  "tipo": "certificato",
+  "richiesto": "2026-11-04T16:38:27.025Z",
+  "esito": "PASS",
+  "dettagli": "Verify return code: 0 (ok);     Verify return code: 0 (ok)",
+  "eseguito": "2026-11-04T16:39:12+00:00"
+}
