@@ -31,7 +31,9 @@ passi che nessuna API raggiunge. La procedura v5 resta il riferimento di *cosa* 
 | --- | --- | --- |
 | `prepara` | Controlla repo e progetto Vercel (e le variabili Preview: avviso se mancano). Record A `collaudo-<sito>.lorentso.it` → VPS. Bypass Vercel (riusa quello esistente). Secret e variabili del sito. Risorsa Coolify a immagine (segnaposto whoami) sul nome di collaudo. Registrazione policy+backup via agente. Ramo `collaudo/rilascio-unico` con i modelli configurati e `vercel.json`, PR bozza. | no |
 | `collaudo` | Prerequisiti C2 sul ramo (standalone, health, healthcheck, SOURCE_COMMIT, vercel.json). Rilascio in modalità collaudo (`gh workflow run rilascio-unico.yml --ref collaudo/rilascio-unico`), attesa del run, `release.json` completo. `verifica-sito.sh` dal runner. Certificato dall'origine via agente. Link a Lorenzo. | **sì: "ok collaudo"** |
-| `cutover`, `failover`, `chiudi` | non ancora nella regia (prossima sessione): la regia si ferma con "fase non ancora implementata" | — |
+| `cutover` | export zona, variabili Vercel → Coolify, backup su Vercel, Worker ACME, domini e certificati; poi ATTESA "ok cutover DNS"; con `ok.cutover` nella scheda: merge, DNS verso la VPS (rollback automatico), secondo rilascio | Lorenzo: "ok cutover DNS" |
+| `failover` | Worker di failover pubblicato, route via API, prova con la pausa del container | — |
+| `chiudi` | dal giorno dopo: verifica-sito, certificati, pulizia del collaudo | — |
 
 Tra `prepara` e `collaudo` Claude completa il codice del sito (C2) sul ramo aperto dalla regia: ogni push sul
 ramo fa già partire un rilascio di collaudo del sito, quindi `collaudo` lo trova fatto oppure ne lancia uno.

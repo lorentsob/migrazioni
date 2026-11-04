@@ -13,10 +13,19 @@ test('fase "nessuna": nessuna azione e nessuno stato scritto', async () => {
   const { s, r } = esegui({ ...SCHEDA, fase: 'nessuna' });
   assert.equal((await r).esito, 'NIENTE'); assert.equal(s.chiamate.filter(c => c[0] === 'regia.salva').length, 0);
 });
-test('fase non implementata (cutover): si ferma con un messaggio chiaro, senza toccare nulla', async () => {
-  const { s, r } = esegui({ ...SCHEDA, fase: 'cutover' }, { regiaFile: { 'stato/esempio.json': { schema: 'stato/v1', sito: 'esempio', fasi: { prepara: { esito: 'PASS' }, collaudo: { esito: 'PASS' } }, valori: {} } } });
-  const e = await r; assert.equal(e.esito, 'NON_IMPLEMENTATA'); assert.match(e.messaggio, /non ancora implementata/);
-  assert.equal(s.chiamate.filter(c => c[0] === 'regia.salva').length, 0);
+test('cutover sospeso in attesa dell\'ok di Lorenzo: esito ATTESA, failover bloccato, avviso "in attesa"', async () => {
+  const { FASI: F } = await import('../regia/migra.mjs');
+  const orig = F.cutover;
+  F.cutover = async (sch, s, { fase }) => { fase.sospesa = true; fase.attesa = 'ok cutover DNS'; return 'preparazione PASS'; };
+  try {
+    const { s, r } = esegui({ ...SCHEDA, fase: 'cutover' }, { regiaFile: { 'stato/esempio.json': { schema: 'stato/v1', sito: 'esempio', fasi: { prepara: { esito: 'PASS' }, collaudo: { esito: 'PASS' } }, valori: {} } } });
+    const e = await r; assert.equal(e.esito, 'ATTESA');
+    const st = s.mondo.regiaFile['stato/esempio.json'];
+    assert.equal(st.fasi.cutover.esito, 'ATTESA'); assert.equal(st.fasi.cutover.attesa, 'ok cutover DNS'); assert.equal(st.fasi.cutover.sospesa, undefined);
+    assert.match(s.mondo.avvisi[0], /^MIGRAZIONE in attesa:/);
+    const f = esegui({ ...SCHEDA, fase: 'failover' }, { regiaFile: { 'stato/esempio.json': st } });
+    assert.match((await f.r).messaggio, /richiede cutover PASS \(ora: ATTESA\)/);
+  } finally { F.cutover = orig; }
 });
 test('collaudo senza prepara PASS: FAIL con avviso, stato non toccato', async () => {
   const { s, r } = esegui({ ...SCHEDA, fase: 'collaudo' });
@@ -35,7 +44,7 @@ test('rieseguire prepara azzera le fasi successive nello stato', async () => {
   const { s, r } = esegui({ ...SCHEDA, fase: 'prepara' }, { repoAssente: true, regiaFile: { 'stato/esempio.json': { schema: 'stato/v1', sito: 'esempio', fasi: { prepara: { esito: 'PASS' }, collaudo: { esito: 'PASS' } }, valori: { x: 1 } } } });
   await r; assert.equal(s.mondo.regiaFile['stato/esempio.json'].fasi.collaudo, undefined);
 });
-test('le fasi implementate oggi sono prepara e collaudo', () => assert.deepEqual(Object.keys(FASI), ['prepara', 'collaudo']));
+test('tutte le fasi sono implementate, nell\'ordine dello stato', () => assert.deepEqual(Object.keys(FASI), ['prepara', 'collaudo', 'cutover', 'failover', 'chiudi']));
 test('migra.yml: parte solo da siti/**, una migrazione alla volta, nessun [skip ci], scrive solo stato e vps', async () => {
   const y = await readFile(new URL('../.github/workflows/migra.yml', import.meta.url), 'utf8');
   assert.match(y, /paths: \['siti\/\*\*'\]/); assert.match(y, /group: migrazioni/); assert.match(y, /cancel-in-progress: false/);

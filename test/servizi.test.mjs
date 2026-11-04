@@ -104,3 +104,26 @@ test('regia reale con git vero: salva e attendi funzionano contro un remoto loca
 test('redigi: i token non finiscono nei messaggi di errore', () => {
   assert.equal(redigi('fatal: https://x-access-token:github_pat_ABC@github.com/o/r.git non trovato; ghp_zzz'), 'fatal: https://x-access-token:***@github.com/o/r.git non trovato; ghp_***');
 });
+
+test('vercel: variabili Production con i valori (decifrati una per una), sensitive senza valore, niente system né per ramo', async () => {
+  const f = fetchFinto([
+    [/GET .*\/v9\/projects\/p\/env/, { json: { envs: [
+      { id: 'e1', key: 'SITE_URL', type: 'encrypted', target: ['production', 'preview'] },
+      { id: 'e2', key: 'SEGRETO', type: 'sensitive', target: ['production'] },
+      { id: 'e3', key: 'SOLO_PREVIEW', type: 'encrypted', target: ['preview'] },
+      { id: 'e4', key: 'RAMO', type: 'encrypted', target: ['production'], gitBranch: 'x' },
+      { id: 'e5', key: 'VERCEL_URL', type: 'system', target: ['production'] }] } }],
+    [/GET .*\/v1\/projects\/p\/env\/e1/, { json: { value: 'https://x.it' } }],
+  ]);
+  const v = await vercel(ENV, { fetchFn: f }).variabiliConValori('p', 'team_x');
+  assert.deepEqual(v, [{ chiave: 'SITE_URL', valore: 'https://x.it', tipo: 'encrypted' }, { chiave: 'SEGRETO', valore: null, tipo: 'sensitive' }]);
+  assert.ok(!f.chiamate.some(c => /env\/e2/.test(c.url)), 'le sensitive non si chiedono');
+});
+
+test('coolify e cloudflare: variabili letterali in blocco, record modificato in place (anche il tipo)', async () => {
+  const f = fetchFinto([[/PATCH .*envs\/bulk/, { status: 201, json: [] }], [/PATCH .*dns_records\/r1/, { json: { success: true, result: {} } }]]);
+  await coolify(ENV, { coolifyUrl: 'https://c' }, { fetchFn: f }).scriviVariabili('u1', [{ chiave: 'A', valore: '$x' }]);
+  assert.deepEqual(f.chiamate[0].body, { data: [{ key: 'A', value: '$x', is_preview: false, is_literal: true }] });
+  await cloudflare(ENV, { fetchFn: f }).aggiornaRecord('z', 'r1', { nome: 'www.x.it', tipo: 'A', contenuto: '1.2.3.4', proxied: true });
+  assert.deepEqual(f.chiamate[1].body, { type: 'A', name: 'www.x.it', content: '1.2.3.4', proxied: true, ttl: 1 });
+});

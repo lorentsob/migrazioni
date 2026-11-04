@@ -111,8 +111,26 @@ export function github(env, { fetchFn = fetch, esegui = eseguiReale } = {}) {
       return { commit: esegui('git', ['rev-parse', 'HEAD'], { cwd: cartella }).stdout.trim(), cambiato: diff.status !== 0 };
     },
     async lanciaWorkflow(repo, workflow, ref) { esegui('gh', ['workflow', 'run', workflow, '--repo', repo, '--ref', ref], { env: ghEnv }); },
+    async cancellaVariabile(repo, nome) {
+      const r = await api(`/repos/${repo}/actions/variables/${nome}`, { method: 'DELETE' });
+      if (!r.ok && r.status !== 404) throw new Stop(`GitHub cancellazione variabile ${nome} -> HTTP ${r.status}`);
+    },
+    /** Stato di una PR: {numero, url, aperta, bozza, unita, mergeSha, testa, messaggi[]} (messaggi dei commit). */
+    async pr(repo, numero) {
+      const j = atteso(await api(`/repos/${repo}/pulls/${numero}`), `GitHub PR ${numero}`);
+      const c = atteso(await api(`/repos/${repo}/pulls/${numero}/commits?per_page=100`), `GitHub commit della PR ${numero}`);
+      return { numero: j.number, url: j.html_url, aperta: j.state === 'open', bozza: !!j.draft, unita: !!j.merged, mergeSha: j.merge_commit_sha,
+        testa: j.head?.sha, ramo: j.head?.ref, messaggi: c.map(x => x.commit?.message || '') };
+    },
+    async prPronta(repo, numero) { esegui('gh', ['pr', 'ready', String(numero), '--repo', repo], { env: ghEnv }); },
+    /** Merge squash con controllo della testa: GitHub rifiuta se la PR è cambiata. Ritorna lo sha su main. */
+    async uniscePr(repo, numero, { testa, titolo }) {
+      const j = atteso(await api(`/repos/${repo}/pulls/${numero}/merge`, { method: 'PUT', body: JSON.stringify({ merge_method: 'squash', sha: testa, commit_title: titolo }) }), `GitHub merge PR ${numero}`);
+      if (!j.merged) throw new Stop(`GitHub: merge della PR ${numero} non fatto: ${j.message}`);
+      return j.sha;
+    },
     async runDelRamo(repo, workflow, ramo) {
-      const j = atteso(await api(`/repos/${repo}/actions/workflows/${workflow}/runs?branch=${encodeURIComponent(ramo)}&per_page=5`), 'GitHub run');
+      const j = atteso(await api(`/repos/${repo}/actions/workflows/${workflow}/runs?branch=${encodeURIComponent(ramo)}&per_page=10`), 'GitHub run');
       return (j.workflow_runs || []).map(r => ({ id: r.id, sha: r.head_sha, stato: r.status, esito: r.conclusion, creato: r.created_at, url: r.html_url }));
     },
   };
@@ -142,6 +160,34 @@ export function vercel(env, { fetchFn = fetch } = {}) {
       for (const e of j.envs || []) for (const t of e.target || []) if (per[t]) per[t].add(e.key);
       return per;
     },
+    /**
+     * Variabili di un ambiente con i valori in chiaro, per copiarle altrove (mai stampate).
+     * [{chiave, valore, tipo}]; valore null per le "sensitive" (Vercel non le restituisce).
+     */
+    async variabiliConValori(id, team, ambiente = 'production') {
+      const j = atteso(await api(`/v9/projects/${encodeURIComponent(id)}/env`, team), 'Vercel variabili');
+      const out = [];
+      for (const e of (j.envs || []).filter(e => (e.target || []).includes(ambiente) && !e.gitBranch && e.type !== 'system')) {
+        if (e.type === 'sensitive') { out.push({ chiave: e.key, valore: null, tipo: e.type }); continue; }
+        const d = atteso(await api(`/v1/projects/${encodeURIComponent(id)}/env/${encodeURIComponent(e.id)}`, team), `Vercel variabile ${e.key}`);
+        out.push({ chiave: e.key, valore: typeof d.value === 'string' ? d.value : null, tipo: e.type });
+      }
+      return out;
+    },
+    async domini(id, team) {
+      const j = atteso(await api(`/v9/projects/${encodeURIComponent(id)}/domains?limit=100`, team), 'Vercel domini');
+      return (j.domains || []).map(d => ({ nome: d.name, verificato: !!d.verified, redirect: d.redirect || null }));
+    },
+    async aggiungiDominio(id, team, nome) {
+      return atteso(await api(`/v10/projects/${encodeURIComponent(id)}/domains`, team, { method: 'POST', body: JSON.stringify({ name: nome }) }), `Vercel aggiunta dominio ${nome}`);
+    },
+    async cancellaAlias(alias, team) {
+      const g = await api(`/v4/aliases/${encodeURIComponent(alias)}`, team);
+      if (g.status === 404) return;
+      const uid = atteso(g, `Vercel alias ${alias}`).uid;
+      const r = await api(`/v2/aliases/${encodeURIComponent(uid)}`, team, { method: 'DELETE' });
+      if (!r.ok && r.status !== 404) throw new Stop(`Vercel cancellazione alias ${alias} -> HTTP ${r.status}`);
+    },
   };
 }
 
@@ -167,6 +213,15 @@ export function coolify(env, config, { fetchFn = fetch, sleep = sleepReale, atte
       return j.uuid;
     },
     async domini(uuid, domini) { await api(`/applications/${uuid}`, { method: 'PATCH', body: JSON.stringify({ domains: domini }) }); },
+    /** PATCH di campi della risorsa (es. {domains, redirect}). */
+    async aggiorna(uuid, campi) { await api(`/applications/${uuid}`, { method: 'PATCH', body: JSON.stringify(campi) }); },
+    /** Variabili della risorsa: [{uuid, chiave, preview}] (i valori non servono e non si leggono). */
+    async variabili(uuid) { return (await api(`/applications/${uuid}/envs`)).map(e => ({ uuid: e.uuid, chiave: e.key, preview: !!e.is_preview })); },
+    /** Crea o aggiorna più variabili in una chiamata; letterali (nessuna interpolazione di $). */
+    async scriviVariabili(uuid, coppie) {
+      await api(`/applications/${uuid}/envs/bulk`, { method: 'PATCH', body: JSON.stringify({ data: coppie.map(c => ({ key: c.chiave, value: c.valore, is_preview: false, is_literal: true })) }) });
+    },
+    async cancellaVariabile(uuid, envUuid) { await api(`/applications/${uuid}/envs/${envUuid}`, { method: 'DELETE' }); },
     async deploy(uuid, { limiteMs = 4 * 60000 } = {}) {
       const d = await api(`/deploy?uuid=${uuid}&force=false`, { method: 'POST' });
       const id = d?.deployments?.[0]?.deployment_uuid;
@@ -195,7 +250,58 @@ export function cloudflare(env, { fetchFn = fetch } = {}) {
   return {
     async zona(nome) { const z = await api(`/zones?name=${encodeURIComponent(nome)}`); if (!z[0]) throw new Stop(`Cloudflare: zona ${nome} non trovata (il token la vede?)`); return z[0].id; },
     async record(zona, nome) { return (await api(`/zones/${zona}/dns_records?name=${encodeURIComponent(nome)}`)).map(r => ({ id: r.id, tipo: r.type, contenuto: r.content, proxied: r.proxied })); },
-    async creaA(zona, nome, ip) { return api(`/zones/${zona}/dns_records`, { method: 'POST', body: JSON.stringify({ type: 'A', name: nome, content: ip, proxied: true, ttl: 1, comment: 'collaudo (regia migrazioni)' }) }); },
+    async creaA(zona, nome, ip, commento = 'collaudo (regia migrazioni)') { return api(`/zones/${zona}/dns_records`, { method: 'POST', body: JSON.stringify({ type: 'A', name: nome, content: ip, proxied: true, ttl: 1, comment: commento }) }); },
+    /** Tutti i record della zona (export completo, per il rollback). */
+    async tuttiRecord(zona) {
+      const out = [];
+      for (let p = 1; p < 50; p++) {
+        const r = await api(`/zones/${zona}/dns_records?per_page=500&page=${p}`);
+        out.push(...r.map(x => ({ id: x.id, nome: x.name, tipo: x.type, contenuto: x.content, proxied: !!x.proxied, ttl: x.ttl, priorita: x.priority ?? null, dati: x.data ?? null, commento: x.comment ?? null })));
+        if (r.length < 500) break;
+      }
+      return out;
+    },
+    async creaRecord(zona, r) {
+      const corpo = { type: r.tipo, name: r.nome, content: r.contenuto, ttl: r.ttl || 1, proxied: r.proxied, ...(r.priorita != null ? { priority: r.priorita } : {}), ...(r.dati ? { data: r.dati } : {}), ...(r.commento ? { comment: r.commento } : {}) };
+      const x = await api(`/zones/${zona}/dns_records`, { method: 'POST', body: JSON.stringify(corpo) });
+      return x.id;
+    },
+    /** Modifica in place (anche il tipo, es. CNAME → A): nessun momento senza record. */
+    async aggiornaRecord(zona, id, r) {
+      await api(`/zones/${zona}/dns_records/${id}`, { method: 'PATCH', body: JSON.stringify({ type: r.tipo, name: r.nome, content: r.contenuto, proxied: r.proxied, ttl: r.ttl || 1, ...(r.commento ? { comment: r.commento } : {}) }) });
+    },
+    async cancellaRecord(zona, id) { await api(`/zones/${zona}/dns_records/${id}`, { method: 'DELETE' }); },
+    /** Valore di un'impostazione della zona, null se il token non la può leggere. */
+    async impostazione(zona, nome) {
+      const r = await chiamaJson(fetchFn, nome, `https://api.cloudflare.com/client/v4/zones/${zona}/settings/${nome}`, { headers: h });
+      return r.ok && r.json?.success ? r.json.result.value : null;
+    },
+    async rotte(zona) { return (await api(`/zones/${zona}/workers/routes`)).map(r => ({ id: r.id, schema: r.pattern, script: r.script ?? null })); },
+    async creaRotta(zona, schema, script) { return (await api(`/zones/${zona}/workers/routes`, { method: 'POST', body: JSON.stringify({ pattern: schema, script }) })).id; },
+    async cancellaRotta(zona, id) { await api(`/zones/${zona}/workers/routes/${id}`, { method: 'DELETE' }); },
+    /** Carica un Worker a modulo singolo (nessuna route qui). */
+    async caricaWorker(account, nome, codice, dataCompatibilita = '2026-10-27') {
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify({ main_module: 'worker.mjs', compatibility_date: dataCompatibilita })], { type: 'application/json' }));
+      form.append('worker.mjs', new Blob([codice], { type: 'application/javascript+module' }), 'worker.mjs');
+      const r = await chiamaJson(fetchFn, nome, `https://api.cloudflare.com/client/v4/accounts/${account}/workers/scripts/${nome}`, { method: 'PUT', body: form, headers: { Authorization: h.Authorization } });
+      if (!r.ok || !r.json?.success) throw new Stop(`Cloudflare caricamento Worker ${nome} -> HTTP ${r.status}: ${JSON.stringify(r.json?.errors || []).slice(0, 200)}`);
+    },
+    async cancellaWorker(account, nome) {
+      const r = await chiamaJson(fetchFn, nome, `https://api.cloudflare.com/client/v4/accounts/${account}/workers/scripts/${nome}?force=true`, { method: 'DELETE', headers: h });
+      if (!r.ok && r.status !== 404) throw new Stop(`Cloudflare cancellazione Worker ${nome} -> HTTP ${r.status}`);
+    },
+  };
+}
+
+// ---------- HTTP verso i siti (controlli dal runner) ----------
+/** GET/POST semplice con tempo massimo; mai segreti negli header. Ritorna {status, headers, testo} o {status: 0, errore}. */
+export function http({ fetchFn = fetch } = {}) {
+  return async (url, { metodo = 'GET', corpo, headers = {}, timeoutMs = 15000 } = {}) => {
+    try {
+      const r = await fetchFn(url, { method: metodo, body: corpo, headers: { 'User-Agent': 'migrazioni-regia/1', ...headers }, redirect: 'manual', signal: AbortSignal.timeout(timeoutMs) });
+      return { status: r.status, headers: Object.fromEntries(r.headers.entries()), testo: await r.text() };
+    } catch (e) { return { status: 0, headers: {}, testo: '', errore: e.message }; }
   };
 }
 
