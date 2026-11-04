@@ -1,7 +1,7 @@
 {
   "schema": "sito/v1",
   "sito": "lorenzoboschi",
-  "fase": "cutover",
+  "fase": "failover",
   "repo": "lorentsob/portfolio-lorenzo-boschi",
   "ramo": "main",
   "dominio": "lorenzoboschi.it",
@@ -16,7 +16,7 @@
     "contestoExtra": "",
     "node": "22.23.4"
   },
-  "note": "Scheda da coolify/inventory/lorenzoboschi.md (22/10). C2 fatto il 4/11 (ramo collaudo/rilascio-unico): Node 22.23.4 come .nvmrc; immagineDiProva null perché le immagini passano dal loader custom imgix (nessun /_next/image). Prima del cutover: PRISMIC_WEBHOOK_SECRET in Vercel e nel webhook Prismic, e variabili di runtime sulla risorsa Coolify. 4/11 17:20: PRISMIC_WEBHOOK_SECRET in Vercel (Config, Production+Preview) e webhook Prismic su lorenzoboschi.it; cutover parte A lanciata. 17:30: Always Use HTTPS spento da Lorenzo, cutover rilanciata. 17:55: certificato non emesso perché @ e www erano 'solo DNS' (il Worker ACME non li vedeva): la regia ora li mette in proxy verso Vercel prima dell'ACME; cutover rilanciata.",
+  "note": "Scheda da coolify/inventory/lorenzoboschi.md (22/10). C2 fatto il 4/11 (ramo collaudo/rilascio-unico): Node 22.23.4 come .nvmrc; immagineDiProva null perché le immagini passano dal loader custom imgix (nessun /_next/image). Prima del cutover: PRISMIC_WEBHOOK_SECRET in Vercel e nel webhook Prismic, e variabili di runtime sulla risorsa Coolify. 4/11 17:20: PRISMIC_WEBHOOK_SECRET in Vercel (Config, Production+Preview) e webhook Prismic su lorenzoboschi.it; cutover parte A lanciata. 17:30: Always Use HTTPS spento da Lorenzo, cutover rilanciata. 17:55: certificato non emesso perché @ e www erano 'solo DNS' (il Worker ACME non li vedeva): la regia ora li mette in proxy verso Vercel prima dell'ACME; cutover rilanciata. 18:40 circa: cutover PASS (merge 4b9a0ec, DNS sulla VPS, verifica-sito PASS); fase failover.",
   "variabiliRichieste": [
     "PRISMIC_WEBHOOK_SECRET"
   ],
