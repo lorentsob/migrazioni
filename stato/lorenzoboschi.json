@@ -68,13 +68,39 @@
       "attesa": null
     },
     "collaudo": {
-      "esito": "IN_CORSO",
+      "esito": "PASS",
       "inizio": "2026-11-04T16:37:00.899Z",
-      "fine": null,
+      "fine": "2026-11-04T16:39:32.404Z",
       "run": "41869016071",
-      "passi": [],
+      "passi": [
+        {
+          "nome": "prerequisiti del codice",
+          "esito": "ok su 93ea1a6",
+          "quando": "2026-11-04T16:37:04.608Z"
+        },
+        {
+          "nome": "rilascio già in corso",
+          "esito": "atteso fino alla fine",
+          "quando": "2026-11-04T16:38:06.356Z"
+        },
+        {
+          "nome": "rilascio di collaudo",
+          "esito": "già fatto per 93ea1a6 (run 41867902977)",
+          "quando": "2026-11-04T16:38:06.652Z"
+        },
+        {
+          "nome": "verifica-sito",
+          "esito": "PASS su collaudo-lorenzoboschi.lorentso.it (backup lorenzoboschi-collaudo-lorentsob.vercel.app)",
+          "quando": "2026-11-04T16:38:27.024Z"
+        },
+        {
+          "nome": "certificato dall'origine",
+          "esito": "ok (Verify return code: 0 (ok);     Verify return code: 0 (ok))",
+          "quando": "2026-11-04T16:39:30.464Z"
+        }
+      ],
       "errore": null,
-      "attesa": null
+      "attesa": "ok collaudo"
     }
   },
   "valori": {
@@ -83,7 +109,9 @@
     "aliasCollaudo": "lorenzoboschi-collaudo-lorentsob.vercel.app",
     "coolifyAppUuid": "enyu6cuyegf9xci4dofufxdj",
     "ramoCodice": "collaudo/rilascio-unico",
-    "pr": "https://github.com/lorentsob/portfolio-lorenzo-boschi/pull/6"
+    "pr": "https://github.com/lorentsob/portfolio-lorenzo-boschi/pull/6",
+    "commitCollaudo": "93ea1a65648ed5c1753a9d0ffc3d571ce4c41631",
+    "runCollaudo": "41867902977"
   },
-  "aggiornato": "2026-11-04T16:37:00.899Z"
+  "aggiornato": "2026-11-04T16:39:32.404Z"
 }
