@@ -201,6 +201,15 @@
       ],
       "errore": null,
       "attesa": null
+    },
+    "failover": {
+      "esito": "IN_CORSO",
+      "inizio": "2026-11-04T18:30:04.832Z",
+      "fine": null,
+      "run": "41887741435",
+      "passi": [],
+      "errore": null,
+      "attesa": null
     }
   },
   "valori": {
@@ -219,5 +228,5 @@
       "verificato": "2026-11-04T18:29:05.864Z"
     }
   },
-  "aggiornato": "2026-11-04T18:29:07.813Z"
+  "aggiornato": "2026-11-04T18:30:04.832Z"
 }
