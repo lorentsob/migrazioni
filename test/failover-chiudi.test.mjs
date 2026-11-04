@@ -23,8 +23,13 @@ function base(fase, mondo = {}) {
 test('failover: WORKER_FAILOVER attivo, rilascio che pubblica il Worker, route sui nomi del sito, prova con la pausa servita dal backup', async () => {
   const c = base('failover');
   // Durante la pausa (esito non ancora scritto) le sonde ricevono la pagina dal backup.
-  c.s.mondo.http = (url, o, m) => ({ status: 200, headers: m.inPausa ? { 'x-served-by': 'vercel-hot-standby' } : {}, testo: '' });
-  c.s.mondo.alSalva = (p, o, m) => { if (p === 'vps/registro.json') for (const v of o.verifiche || []) { m.inPausa = true; setTimeout(() => { m.remoto[`vps/esiti/${v.id}.json`] = { id: v.id, esito: 'PASS', dettagli: 'container in pausa 120 s, poi ripreso' }; m.inPausa = false; }, 5); } };
+  // La pausa finisce dopo alcune sonde servite dal backup (contate, non a tempo: niente test instabili).
+  c.s.mondo.http = (url, o, m) => {
+    if (!m.inPausa) return { status: 200, headers: {}, testo: '' };
+    if (++m.sondePausa >= 5) { m.remoto[`vps/esiti/${m.idPausa}.json`] = { id: m.idPausa, esito: 'PASS', dettagli: 'container in pausa 120 s, poi ripreso' }; m.inPausa = false; }
+    return { status: 200, headers: { 'x-served-by': 'vercel-hot-standby' }, testo: '' };
+  };
+  c.s.mondo.alSalva = (p, o, m) => { if (p === 'vps/registro.json') for (const v of o.verifiche || []) { m.inPausa = true; m.sondePausa = 0; m.idPausa = v.id; } };
   const attendi = c.s.regia.attendi;
   c.s.regia.attendi = async (p, cond) => { for (let i = 0; i < 50; i++) { const e = c.s.mondo.remoto[p]; if (e && cond(e)) return e; await new Promise(r => setTimeout(r, 2)); } return attendi(p, cond); };
   const m = await failover(c.scheda, c.s, { env: ENV, config: CONFIG, stato: c.stato, fase: c.fase });
