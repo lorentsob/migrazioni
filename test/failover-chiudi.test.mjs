@@ -23,8 +23,13 @@ function base(fase, mondo = {}) {
 test('failover: WORKER_FAILOVER attivo, rilascio che pubblica il Worker, route sui nomi del sito, prova con la pausa servita dal backup', async () => {
   const c = base('failover');
   // Durante la pausa (esito non ancora scritto) le sonde ricevono la pagina dal backup.
-  c.s.mondo.http = (url, o, m) => ({ status: 200, headers: m.inPausa ? { 'x-served-by': 'vercel-hot-standby' } : {}, testo: '' });
-  c.s.mondo.alSalva = (p, o, m) => { if (p === 'vps/registro.json') for (const v of o.verifiche || []) { m.inPausa = true; setTimeout(() => { m.remoto[`vps/esiti/${v.id}.json`] = { id: v.id, esito: 'PASS', dettagli: 'container in pausa 120 s, poi ripreso' }; m.inPausa = false; }, 5); } };
+  // La pausa finisce dopo alcune sonde servite dal backup (contate, non a tempo: niente test instabili).
+  c.s.mondo.http = (url, o, m) => {
+    if (!m.inPausa) return { status: 200, headers: {}, testo: '' };
+    if (++m.sondePausa >= 5) { m.remoto[`vps/esiti/${m.idPausa}.json`] = { id: m.idPausa, esito: 'PASS', dettagli: 'container in pausa 120 s, poi ripreso' }; m.inPausa = false; }
+    return { status: 200, headers: { 'x-served-by': 'vercel-hot-standby' }, testo: '' };
+  };
+  c.s.mondo.alSalva = (p, o, m) => { if (p === 'vps/registro.json') for (const v of o.verifiche || []) { m.inPausa = true; m.sondePausa = 0; m.idPausa = v.id; } };
   const attendi = c.s.regia.attendi;
   c.s.regia.attendi = async (p, cond) => { for (let i = 0; i < 50; i++) { const e = c.s.mondo.remoto[p]; if (e && cond(e)) return e; await new Promise(r => setTimeout(r, 2)); } return attendi(p, cond); };
   const m = await failover(c.scheda, c.s, { env: ENV, config: CONFIG, stato: c.stato, fase: c.fase });
@@ -66,4 +71,14 @@ test('chiudi: verifica-sito, certificati, poi pulizia di variabili, rami, nome d
   assert.equal(c.s.mondo.dns.length, 0);
   assert.ok(c.s.chiamate.some(x => x[0] === 'vercel.cancellaAlias' && x[1] === 'esempio-collaudo-lorentsob.vercel.app'));
   const ver = c.s.mondo.esecuzioni.find(e => e[0] === 'bash'); assert.deepEqual(ver.slice(2), ['esempio.it', 'backup.esempio.it', M]);
+});
+
+test('rilascio lanciato dalla regia: un push di Lorenzo nello stesso momento non viene scambiato per il nostro run', async () => {
+  const { rilascio } = await import('../regia/lib/comuni.mjs');
+  const c = base('failover');
+  // Il nostro run (dispatch) e, subito dopo, un push di Lorenzo fermato dal registro: l'elenco è dal più nuovo.
+  c.s.mondo.alLancio = m => { m.runs = [{ id: 31, sha: 'e'.repeat(40), stato: 'completed', esito: 'failure', evento: 'push', url: 'push' },
+    { id: 30, sha: M, stato: 'completed', esito: 'success', evento: 'workflow_dispatch', url: 'nostro' }, ...m.runs]; };
+  const { run } = await rilascio(c.s, c.scheda, CONFIG, { lancia: true });
+  assert.equal(run.url, 'nostro');
 });
