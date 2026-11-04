@@ -82,3 +82,29 @@ test('rilascio lanciato dalla regia: un push di Lorenzo nello stesso momento non
   const { run } = await rilascio(c.s, c.scheda, CONFIG, { lancia: true });
   assert.equal(run.url, 'nostro');
 });
+
+test('failover: registro fermo senza ok di sblocco → stop prima di ogni rilascio', async () => {
+  const c = base('failover');
+  c.s.mondo.file['release.json'] = JSON.stringify({ commit: M, esito: 'in_corso', runId: '77' });
+  await assert.rejects(failover(c.scheda, c.s, { env: ENV, config: CONFIG, stato: c.stato, fase: c.fase }), /serve l'ok di Lorenzo per lo sblocco/);
+  assert.ok(!c.s.chiamate.some(x => x[0] === 'gh.lanciaWorkflow'));
+});
+
+test('failover: registro fermo con ok di sblocco → rilascio-sblocca lanciato una volta, poi il rilascio', async () => {
+  const scheda = validaScheda({ ...SCHEDA, fase: 'failover', sblocco: { azione: 'accetta', run: '77', ok: '2026-11-04T18:55Z Lorenzo: sblocca' } }, CONFIG);
+  const c = base('failover'); c.scheda = scheda;
+  c.s.mondo.file['release.json'] = JSON.stringify({ commit: M, esito: 'in_corso', runId: '77' });
+  const lancio = c.s.mondo.alLancio;
+  c.s.mondo.alLancio = (m, w, input) => {
+    if (w !== 'rilascio-sblocca.yml') return lancio(m);
+    assert.deepEqual([input.azione, input.conferma], ['accetta', 'sblocca']);
+    m.runsSblocca = [{ id: 90, stato: 'completed', esito: 'success', url: 's' }];
+    m.file['release.json'] = JSON.stringify({ commit: M, esito: 'completo', runId: '77' });
+  };
+  c.s.mondo.http = () => ({ status: 502, headers: {}, testo: '' }); // si ferma dopo, sulla pagina: qui conta lo sblocco
+  await assert.rejects(failover(c.scheda, c.s, { env: ENV, config: CONFIG, stato: c.stato, fase: c.fase }), /route del Worker tolte/);
+  const lanci = c.s.chiamate.filter(x => x[0] === 'gh.lanciaWorkflow').map(x => x[1]);
+  assert.deepEqual(lanci, ['rilascio-sblocca.yml', 'rilascio-unico.yml']);
+  assert.ok(c.stato.fasi.failover.passi.some(p => p.nome === 'sblocco del registro'));
+  assert.deepEqual(c.stato.valori.sblocchi, ['77']);
+});

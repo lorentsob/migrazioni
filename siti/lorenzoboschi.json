@@ -23,5 +23,10 @@
   "webhook": "/api/revalidate",
   "ok": {
     "cutover": "2026-11-04T18:06:17Z Lorenzo: ok cutover DNS, vai ora (scheda decisione)"
+  },
+  "sblocco": {
+    "azione": "accetta",
+    "run": "41887773753",
+    "ok": "2026-11-04T18:55:01Z Lorenzo: Sì, sblocca e rilancia (scheda decisione)"
   }
 }

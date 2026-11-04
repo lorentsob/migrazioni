@@ -34,6 +34,9 @@ export function validaScheda(s, config = {}) {
   if (s.ok != null && typeof s.ok !== 'object') err('ok: oggetto {collaudo, cutover} con le date degli ok di Lorenzo');
   if (s.ok?.cutover != null && typeof s.ok.cutover !== 'string') err('ok.cutover: data e testo dell\'ok di Lorenzo (stringa)');
   if (s.variabiliRichieste != null && !(Array.isArray(s.variabiliRichieste) && s.variabiliRichieste.every(k => /^[A-Z][A-Z0-9_]*$/.test(k)))) err('variabiliRichieste: nomi di variabili Vercel');
+  if (s.sblocco != null && !(typeof s.sblocco === 'object' && ['ripristina', 'accetta', 'completa-vercel'].includes(s.sblocco.azione)
+    && typeof s.sblocco.ok === 'string' && s.sblocco.ok && typeof s.sblocco.run === 'string' && /^\d+$/.test(s.sblocco.run)))
+    err('sblocco: {azione: ripristina|accetta|completa-vercel, run: id del run fermo, ok: data e testo dell\'ok di Lorenzo}');
   if (s.webhook != null && !/^\/[A-Za-z0-9._\/-]+$/.test(s.webhook)) err('webhook: percorso (es. /api/revalidate)');
   return completa(s, config);
 }

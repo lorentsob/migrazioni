@@ -78,3 +78,35 @@ export async function finche(s, url, ok, { limiteMs = 5 * 60000, attesaMs = 1500
 }
 
 export const revisione = r => { try { return JSON.parse(r.testo).revision || null; } catch { return null; } };
+
+/**
+ * Registro dei rilasci fermo (esito diverso da "completo"): senza sblocco ogni rilascio successivo si
+ * ferma. Lo sblocco parte solo con l'ok scritto di Lorenzo nella scheda (`sblocco`: azione, run fermo,
+ * ok), una volta per run: la regia lancia rilascio-sblocca.yml, che rilegge VPS e Vercel e agisce solo
+ * se lo stato vero coincide con l'azione. Ritorna una riga per il resoconto, o null se non serviva.
+ */
+export async function sbloccaRegistro(s, scheda, config, stato, { ramo = 'main', registro = 'rilasci' } = {}) {
+  const testo = await s.gh.file(scheda.repo, 'release.json', registro);
+  const release = testo ? JSON.parse(testo) : null;
+  if (!release || release.esito === 'completo') return null;
+  const fermo = `registro "${registro}" fermo su "${release.esito}" (run ${release.runId}, ${String(release.commit).slice(0, 7)})`;
+  const sb = scheda.sblocco;
+  if (!sb || sb.run !== String(release.runId)) throw new Stop(`${fermo}: serve l'ok di Lorenzo per lo sblocco (scheda: sblocco {azione, run: "${release.runId}", ok})`);
+  const fatti = (stato.valori.sblocchi = stato.valori.sblocchi || []);
+  if (fatti.includes(sb.run)) throw new Stop(`${fermo}: sblocco "${sb.azione}" già tentato per questo run, il registro non è tornato completo`);
+  fatti.push(sb.run);
+  const prima = (await s.gh.runDelRamo(scheda.repo, 'rilascio-sblocca.yml', ramo)).map(r => r.id);
+  await s.gh.lanciaWorkflow(scheda.repo, 'rilascio-sblocca.yml', ramo, { azione: sb.azione, motivo: `regia: ${sb.ok}`.slice(0, 200), conferma: 'sblocca' });
+  let run = null;
+  for (let giro = 0; giro * 15000 < config.attesaRilascioMinuti * 60000; giro++) {
+    const nuovi = (await s.gh.runDelRamo(scheda.repo, 'rilascio-sblocca.yml', ramo)).filter(r => !prima.includes(r.id));
+    run = nuovi[nuovi.length - 1] || null;
+    if (run?.stato === 'completed') break;
+    await s.sleep(15000);
+  }
+  if (!run) throw new Stop(`${fermo}: rilascio-sblocca non è partito`);
+  if (run.stato !== 'completed') throw new Stop(`${fermo}: rilascio-sblocca ancora in corso: ${run.url}`);
+  const dopo = JSON.parse((await s.gh.file(scheda.repo, 'release.json', registro)) || 'null');
+  if (run.esito !== 'success' || dopo?.esito !== 'completo') throw new Stop(`${fermo}: rilascio-sblocca ${run.esito}, registro "${dopo?.esito}": ${run.url}`);
+  return `${fermo} → "${sb.azione}" (run ${run.id}), registro completo`;
+}
