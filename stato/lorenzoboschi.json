@@ -203,15 +203,40 @@
       "attesa": null
     },
     "failover": {
-      "esito": "IN_CORSO",
+      "esito": "PASS",
       "inizio": "2026-11-04T19:03:47.844Z",
-      "fine": null,
+      "fine": "2026-11-04T19:16:29.962Z",
       "run": "41893240420",
       "passi": [
         {
           "nome": "configurazione del Worker",
           "esito": "presente su main (lorenzoboschi-failover)",
           "quando": "2026-11-04T19:03:50.042Z"
+        },
+        {
+          "nome": "sblocco del registro",
+          "esito": "registro \"rilasci\" fermo su \"in_corso\" (run 41887773753, 4b9a0ec) → \"accetta\" (run 41893274965), registro completo",
+          "quando": "2026-11-04T19:04:09.636Z"
+        },
+        {
+          "nome": "rilascio con il Worker",
+          "esito": "completo (run 41893332876), Worker lorenzoboschi-failover pubblicato",
+          "quando": "2026-11-04T19:10:50.441Z"
+        },
+        {
+          "nome": "route del Worker",
+          "esito": "create lorenzoboschi.it/*, www.lorenzoboschi.it/*",
+          "quando": "2026-11-04T19:10:51.904Z"
+        },
+        {
+          "nome": "sito con il Worker",
+          "esito": "https://lorenzoboschi.it/it 200 dalla VPS",
+          "quando": "2026-11-04T19:10:52.295Z"
+        },
+        {
+          "nome": "prova di guasto",
+          "esito": "container enyu6cuyegf9xci4dofufxdj-20261104T190913 in pausa 120 s, poi ripreso; 10/31 sonde servite dal backup, 0 errori; poi di nuovo dalla VPS",
+          "quando": "2026-11-04T19:16:29.961Z"
         }
       ],
       "errore": null,
@@ -233,10 +258,18 @@
       "commit": "4b9a0ec0be326e4a971901475b0ca9c4dd7461da",
       "verificato": "2026-11-04T18:29:05.864Z"
     },
-    "failover": {},
+    "failover": {
+      "pubblicato": "4d681cfcb7cd5504770bb76a95d182723087a5c4",
+      "prova": {
+        "quando": "2026-11-04T19:16:29.961Z",
+        "totali": 31,
+        "backup": 10,
+        "errori": []
+      }
+    },
     "sblocchi": [
       "41887773753"
     ]
   },
-  "aggiornato": "2026-11-04T19:03:47.844Z"
+  "aggiornato": "2026-11-04T19:16:29.962Z"
 }
