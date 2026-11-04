@@ -203,18 +203,12 @@
       "attesa": null
     },
     "failover": {
-      "esito": "FAIL",
-      "inizio": "2026-11-04T18:30:04.832Z",
-      "fine": "2026-11-04T18:37:17.347Z",
-      "run": "41887741435",
-      "passi": [
-        {
-          "nome": "configurazione del Worker",
-          "esito": "presente su main (lorenzoboschi-failover)",
-          "quando": "2026-11-04T18:30:06.884Z"
-        }
-      ],
-      "errore": "rilascio su main failure: https://github.com/lorentsob/portfolio-lorenzo-boschi/actions/runs/41887907170 (registro \"in_corso\": ?; sblocco con rilascio-sblocca.yml)",
+      "esito": "IN_CORSO",
+      "inizio": "2026-11-04T19:03:47.844Z",
+      "fine": null,
+      "run": "41893240420",
+      "passi": [],
+      "errore": null,
       "attesa": null
     }
   },
@@ -235,5 +229,5 @@
     },
     "failover": {}
   },
-  "aggiornato": "2026-11-04T18:37:17.347Z"
+  "aggiornato": "2026-11-04T19:03:47.844Z"
 }
