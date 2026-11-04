@@ -108,11 +108,97 @@
       }
     },
     "cutover": {
-      "esito": "IN_CORSO",
+      "esito": "PASS",
       "inizio": "2026-11-04T18:07:33.656Z",
-      "fine": null,
+      "fine": "2026-11-04T18:29:07.813Z",
       "run": "41883928994",
-      "passi": [],
+      "passi": [
+        {
+          "nome": "PR del sito",
+          "esito": "aperta, testa 93ea1a6 = commit collaudato",
+          "quando": "2026-11-04T18:07:36.414Z"
+        },
+        {
+          "nome": "export della zona",
+          "esito": "già salvato il 2026-11-04T17:20:30.239Z (31 record)",
+          "quando": "2026-11-04T18:07:36.803Z"
+        },
+        {
+          "nome": "variabili sulla risorsa",
+          "esito": "4 copiate da Vercel Production (PRISMIC_WEBHOOK_SECRET, ADAPTIVE_MAX_REQUESTS_PER_IP, SITE_URL, NEXT_PUBLIC_PRISMIC_ENVIRONMENT), valori mai stampati; tolte: nessuna",
+          "quando": "2026-11-04T18:07:39.507Z"
+        },
+        {
+          "nome": "dominio di backup",
+          "esito": "backup.lorenzoboschi.it su Vercel, HTTP 307",
+          "quando": "2026-11-04T18:07:40.531Z"
+        },
+        {
+          "nome": "Worker ACME temporaneo",
+          "esito": "lorenzoboschi-acme su lorenzoboschi.it/.well-known/acme-challenge/*, www.lorenzoboschi.it/.well-known/acme-challenge/* (Always Use HTTPS: off)",
+          "quando": "2026-11-04T18:07:42.810Z"
+        },
+        {
+          "nome": "domini sulla risorsa",
+          "esito": "già impostati; deploy per le variabili finito",
+          "quando": "2026-11-04T18:07:50.710Z"
+        },
+        {
+          "nome": "certificato dall'origine",
+          "esito": "ok per lorenzoboschi.it, www.lorenzoboschi.it",
+          "quando": "2026-11-04T18:16:38.714Z"
+        },
+        {
+          "nome": "ok cutover DNS",
+          "esito": "di Lorenzo: 2026-11-04T18:06:17Z Lorenzo: ok cutover DNS, vai ora (scheda decisione)",
+          "quando": "2026-11-04T18:16:38.714Z"
+        },
+        {
+          "nome": "merge della PR",
+          "esito": "squash 4b9a0ec su main",
+          "quando": "2026-11-04T18:16:45.382Z"
+        },
+        {
+          "nome": "primo rilascio di produzione",
+          "esito": "completo su collaudo-lorenzoboschi.lorentso.it (run 41885555918)",
+          "quando": "2026-11-04T18:22:20.803Z"
+        },
+        {
+          "nome": "DNS verso la VPS",
+          "esito": "lorenzoboschi.it, www.lorenzoboschi.it → A 130.110.18.144 (proxied)",
+          "quando": "2026-11-04T18:22:22.477Z"
+        },
+        {
+          "nome": "posta e altri record",
+          "esito": "identici all'export (5 MX)",
+          "quando": "2026-11-04T18:22:22.822Z"
+        },
+        {
+          "nome": "health sul dominio",
+          "esito": "lorenzoboschi.it serve 4b9a0ec dalla VPS; www reindirizza",
+          "quando": "2026-11-04T18:22:23.983Z"
+        },
+        {
+          "nome": "secondo rilascio",
+          "esito": "completo e verificato su lorenzoboschi.it (run 41886504430)",
+          "quando": "2026-11-04T18:28:33.507Z"
+        },
+        {
+          "nome": "verifica-sito",
+          "esito": "PASS su lorenzoboschi.it (backup backup.lorenzoboschi.it)",
+          "quando": "2026-11-04T18:29:05.864Z"
+        },
+        {
+          "nome": "webhook con secret sbagliato",
+          "esito": "401 come atteso",
+          "quando": "2026-11-04T18:29:06.094Z"
+        },
+        {
+          "nome": "Worker ACME temporaneo",
+          "esito": "tolto (route, script e origin-vps)",
+          "quando": "2026-11-04T18:29:07.812Z"
+        }
+      ],
       "errore": null,
       "attesa": null
     }
@@ -126,7 +212,12 @@
     "pr": "https://github.com/lorentsob/portfolio-lorenzo-boschi/pull/6",
     "commitCollaudo": "93ea1a65648ed5c1753a9d0ffc3d571ce4c41631",
     "runCollaudo": "41867902977",
-    "cutover": {}
+    "cutover": {
+      "merge": "4b9a0ec0be326e4a971901475b0ca9c4dd7461da",
+      "dns": "2026-11-04T18:22:22.477Z",
+      "commit": "4b9a0ec0be326e4a971901475b0ca9c4dd7461da",
+      "verificato": "2026-11-04T18:29:05.864Z"
+    }
   },
-  "aggiornato": "2026-11-04T18:07:33.656Z"
+  "aggiornato": "2026-11-04T18:29:07.813Z"
 }
