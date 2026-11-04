@@ -207,7 +207,13 @@
       "inizio": "2026-11-04T19:03:47.844Z",
       "fine": null,
       "run": "41893240420",
-      "passi": [],
+      "passi": [
+        {
+          "nome": "configurazione del Worker",
+          "esito": "presente su main (lorenzoboschi-failover)",
+          "quando": "2026-11-04T19:03:50.042Z"
+        }
+      ],
       "errore": null,
       "attesa": null
     }
@@ -227,7 +233,10 @@
       "commit": "4b9a0ec0be326e4a971901475b0ca9c4dd7461da",
       "verificato": "2026-11-04T18:29:05.864Z"
     },
-    "failover": {}
+    "failover": {},
+    "sblocchi": [
+      "41887773753"
+    ]
   },
   "aggiornato": "2026-11-04T19:03:47.844Z"
 }
