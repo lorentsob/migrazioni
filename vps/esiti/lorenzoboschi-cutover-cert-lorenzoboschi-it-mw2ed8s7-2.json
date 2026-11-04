@@ -1,0 +1,8 @@
+{
+  "id": "lorenzoboschi-cutover-cert-lorenzoboschi-it-mw2ed8s7-2",
+  "tipo": "certificato",
+  "richiesto": "2026-11-04T17:35:09.751Z",
+  "esito": "FAIL",
+  "dettagli": "Verify return code: 18 (self-signed certificate)",
+  "eseguito": "2026-11-04T17:38:12+00:00"
+}
