@@ -1,0 +1,8 @@
+{
+  "id": "lorenzoboschi-cutover-cert-lorenzoboschi-it-mw2fj9vb-1",
+  "tipo": "certificato",
+  "richiesto": "2026-11-04T18:07:50.711Z",
+  "esito": "PASS",
+  "dettagli": "Verify return code: 0 (ok);     Verify return code: 0 (ok)",
+  "eseguito": "2026-11-04T18:10:42+00:00"
+}
