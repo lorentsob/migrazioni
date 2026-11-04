@@ -107,4 +107,6 @@ test('failover: registro fermo con ok di sblocco → rilascio-sblocca lanciato u
   assert.deepEqual(lanci, ['rilascio-sblocca.yml', 'rilascio-unico.yml']);
   assert.ok(c.stato.fasi.failover.passi.some(p => p.nome === 'sblocco del registro'));
   assert.deepEqual(c.stato.valori.sblocchi, ['77']);
+  const n = c.s.chiamate.map(x => x[0] === 'regia.salva' ? `salva:${x[1]}` : x[0] === 'gh.lanciaWorkflow' ? `lancia:${x[1]}` : null).filter(Boolean);
+  assert.ok(n.indexOf('salva:stato/esempio.json') > -1 && n.indexOf('salva:stato/esempio.json') < n.indexOf('lancia:rilascio-sblocca.yml'), 'sblocco segnato prima del lancio');
 });

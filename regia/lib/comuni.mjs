@@ -95,6 +95,8 @@ export async function sbloccaRegistro(s, scheda, config, stato, { ramo = 'main',
   const fatti = (stato.valori.sblocchi = stato.valori.sblocchi || []);
   if (fatti.includes(sb.run)) throw new Stop(`${fermo}: sblocco "${sb.azione}" già tentato per questo run, il registro non è tornato completo`);
   fatti.push(sb.run);
+  // Prima del lancio: se la corsa si interrompe, il rilancio trova lo sblocco già usato e non lo ripete.
+  s.regia.salva(`stato/${stato.sito}.json`, stato, `stato: ${stato.sito} sblocco ${sb.azione} del run ${sb.run}`);
   const prima = (await s.gh.runDelRamo(scheda.repo, 'rilascio-sblocca.yml', ramo)).map(r => r.id);
   await s.gh.lanciaWorkflow(scheda.repo, 'rilascio-sblocca.yml', ramo, { azione: sb.azione, motivo: `regia: ${sb.ok}`.slice(0, 200), conferma: 'sblocca' });
   let run = null;
