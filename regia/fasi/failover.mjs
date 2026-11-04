@@ -4,7 +4,7 @@
 // mette in pausa il container e la regia controlla che le pagine pubbliche arrivino dal backup.
 // Cosa NON protegge: POST, API, anteprime, sessioni, guasti delle dipendenze esterne.
 import { Stop } from '../lib/servizi.mjs';
-import { rilascio, verificaAgente, finche } from '../lib/comuni.mjs';
+import { rilascio, verificaAgente, finche, sbloccaRegistro } from '../lib/comuni.mjs';
 import { nomiWeb } from './cutover.mjs';
 
 export const rotteFailover = scheda => nomiWeb(scheda).map(n => `${n}/*`);
@@ -25,6 +25,8 @@ export async function failover(scheda, s, { env, config, stato, fase }) {
   const vars = await s.gh.variabili(scheda.repo);
   if (vars.DOMINIO_OVERRIDE) throw new Stop('DOMINIO_OVERRIDE è ancora impostata: il cutover non è finito');
   if (vars.WORKER_FAILOVER !== 'attivo' || !v.failover.pubblicato) {
+    const sbloccato = await sbloccaRegistro(s, scheda, config, stato, { ramo: scheda.ramo });
+    if (sbloccato) passo('sblocco del registro', sbloccato);
     await s.gh.variabile(scheda.repo, 'WORKER_FAILOVER', 'attivo');
     await s.gh.variabile(scheda.repo, 'CLOUDFLARE_ACCOUNT_ID', config.cloudflareAccountId);
     const r = await rilascio(s, scheda, config, { ramo: scheda.ramo, lancia: true });

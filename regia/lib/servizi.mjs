@@ -110,7 +110,10 @@ export function github(env, { fetchFn = fetch, esegui = eseguiReale } = {}) {
       esegui('git', ['push', '--quiet', '-u', 'origin', ramo], { cwd: cartella });
       return { commit: esegui('git', ['rev-parse', 'HEAD'], { cwd: cartella }).stdout.trim(), cambiato: diff.status !== 0 };
     },
-    async lanciaWorkflow(repo, workflow, ref) { esegui('gh', ['workflow', 'run', workflow, '--repo', repo, '--ref', ref], { env: ghEnv }); },
+    async lanciaWorkflow(repo, workflow, ref, input = {}) {
+      const campi = Object.entries(input).flatMap(([k, v]) => ['-f', `${k}=${v}`]);
+      esegui('gh', ['workflow', 'run', workflow, '--repo', repo, '--ref', ref, ...campi], { env: ghEnv });
+    },
     async cancellaVariabile(repo, nome) {
       const r = await api(`/repos/${repo}/actions/variables/${nome}`, { method: 'DELETE' });
       if (!r.ok && r.status !== 404) throw new Stop(`GitHub cancellazione variabile ${nome} -> HTTP ${r.status}`);
