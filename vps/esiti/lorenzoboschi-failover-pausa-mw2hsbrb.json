@@ -1,0 +1,8 @@
+{
+  "id": "lorenzoboschi-failover-pausa-mw2hsbrb",
+  "tipo": "pausa",
+  "richiesto": "2026-11-04T19:10:52.296Z",
+  "esito": "PASS",
+  "dettagli": "container enyu6cuyegf9xci4dofufxdj-20261104T190913 in pausa 120 s, poi ripreso",
+  "eseguito": "2026-11-04T19:16:15+00:00"
+}
