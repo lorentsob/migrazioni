@@ -1,7 +1,7 @@
 {
   "schema": "sito/v1",
   "sito": "lorenzoboschi",
-  "fase": "failover",
+  "fase": "chiudi",
   "repo": "lorentsob/portfolio-lorenzo-boschi",
   "ramo": "main",
   "dominio": "lorenzoboschi.it",
