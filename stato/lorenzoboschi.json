@@ -243,11 +243,47 @@
       "attesa": null
     },
     "chiudi": {
-      "esito": "IN_CORSO",
+      "esito": "PASS",
       "inizio": "2026-11-05T12:38:24.821Z",
-      "fine": null,
+      "fine": "2026-11-05T12:45:43.592Z",
       "run": "42028825756",
-      "passi": [],
+      "passi": [
+        {
+          "nome": "verifica-sito",
+          "esito": "PASS su lorenzoboschi.it (4d681cf)",
+          "quando": "2026-11-05T12:38:45.989Z"
+        },
+        {
+          "nome": "certificato dall'origine",
+          "esito": "ok per lorenzoboschi.it, www.lorenzoboschi.it (rinnovo automatico di Traefik)",
+          "quando": "2026-11-05T12:45:23.519Z"
+        },
+        {
+          "nome": "pulizia del repo",
+          "esito": "variabili di collaudo tolte; rami collaudo/rilascio-unico e rilasci-collaudo cancellati",
+          "quando": "2026-11-05T12:45:26.100Z"
+        },
+        {
+          "nome": "nome di collaudo su Coolify",
+          "esito": "tolto; domini https://lorenzoboschi.it,https://www.lorenzoboschi.it",
+          "quando": "2026-11-05T12:45:40.600Z"
+        },
+        {
+          "nome": "collaudo su DNS e Vercel",
+          "esito": "record collaudo-lorenzoboschi.lorentso.it e alias lorenzoboschi-collaudo-lorentsob.vercel.app tolti",
+          "quando": "2026-11-05T12:45:41.827Z"
+        },
+        {
+          "nome": "Worker ACME temporaneo",
+          "esito": "nessun resto",
+          "quando": "2026-11-05T12:45:43.037Z"
+        },
+        {
+          "nome": "health finale",
+          "esito": "ok",
+          "quando": "2026-11-05T12:45:43.592Z"
+        }
+      ],
       "errore": null,
       "attesa": null
     }
@@ -280,5 +316,5 @@
       "41887773753"
     ]
   },
-  "aggiornato": "2026-11-05T12:38:24.821Z"
+  "aggiornato": "2026-11-05T12:45:43.592Z"
 }
