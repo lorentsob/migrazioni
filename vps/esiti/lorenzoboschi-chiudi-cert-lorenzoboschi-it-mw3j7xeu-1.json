@@ -1,0 +1,8 @@
+{
+  "id": "lorenzoboschi-chiudi-cert-lorenzoboschi-it-mw3j7xeu-1",
+  "tipo": "certificato",
+  "richiesto": "2026-11-05T12:38:45.990Z",
+  "esito": "PASS",
+  "dettagli": "Verify return code: 0 (ok);     Verify return code: 0 (ok)",
+  "eseguito": "2026-11-05T12:39:42+00:00"
+}
