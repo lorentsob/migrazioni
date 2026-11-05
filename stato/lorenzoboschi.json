@@ -241,6 +241,15 @@
       ],
       "errore": null,
       "attesa": null
+    },
+    "chiudi": {
+      "esito": "IN_CORSO",
+      "inizio": "2026-11-05T12:38:24.821Z",
+      "fine": null,
+      "run": "42028825756",
+      "passi": [],
+      "errore": null,
+      "attesa": null
     }
   },
   "valori": {
@@ -271,5 +280,5 @@
       "41887773753"
     ]
   },
-  "aggiornato": "2026-11-04T19:16:29.962Z"
+  "aggiornato": "2026-11-05T12:38:24.821Z"
 }
